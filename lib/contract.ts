@@ -1,4 +1,4 @@
-import { createPublicClient, http, parseAbi } from 'viem';
+import { createPublicClient, http, parseAbi, type WalletClient } from 'viem';
 import { base } from 'viem/chains';
 
 // FundBase Contract ABI
@@ -40,7 +40,7 @@ export async function postIdea(
   id: string,
   title: string,
   description: string,
-  walletClient: any
+  walletClient: WalletClient
 ) {
   if (!CONTRACT_ADDRESS) {
     throw new Error('Contract address not configured');
@@ -60,7 +60,7 @@ export async function postIdea(
 export async function backIdeaWithETH(
   id: string,
   amount: bigint,
-  walletClient: any
+  walletClient: WalletClient
 ) {
   if (!CONTRACT_ADDRESS) {
     throw new Error('Contract address not configured');
@@ -82,7 +82,7 @@ export async function backIdeaWithToken(
   id: string,
   token: `0x${string}`,
   amount: bigint,
-  walletClient: any
+  walletClient: WalletClient
 ) {
   if (!CONTRACT_ADDRESS) {
     throw new Error('Contract address not configured');
@@ -101,7 +101,7 @@ export async function backIdeaWithToken(
 
 export async function withdrawFunds(
   id: string,
-  walletClient: any
+  walletClient: WalletClient
 ) {
   if (!CONTRACT_ADDRESS) {
     throw new Error('Contract address not configured');

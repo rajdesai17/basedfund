@@ -1064,7 +1064,7 @@ export function BackersModal({ idea, backers, isOpen, onClose }: BackersModalPro
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              Backers for "{idea.title}"
+              Backers for &quot;{idea.title}&quot;
             </h3>
             <p className="text-sm text-gray-600 mt-1">
               A record of all contributions to this project
