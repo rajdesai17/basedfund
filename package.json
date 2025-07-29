@@ -12,11 +12,6 @@
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.0.1",
-    "@coinbase/onchainkit/frame": "^0.0.1",
-    "@coinbase/onchainkit/identity": "^0.0.1",
-    "@coinbase/onchainkit/minikit": "^0.0.1",
-    "@coinbase/onchainkit/transaction": "^0.0.1",
-    "@coinbase/onchainkit/wallet": "^0.0.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
