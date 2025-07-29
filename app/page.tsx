@@ -25,8 +25,7 @@ import {
   Icon, 
   Card,
   PostIdea,
-  BackIdea,
-  WithdrawFunds,
+  IdeaCard,
   BackersModal,
   type Idea,
   type Backer
@@ -95,18 +94,6 @@ export default function App() {
           ...idea,
           totalRaised: idea.totalRaised + amount,
           backerCount: idea.backerCount + 1,
-        };
-      }
-      return idea;
-    }));
-  }, []);
-
-  const handleWithdrawFunds = useCallback((ideaId: string) => {
-    setIdeas(prev => prev.map(idea => {
-      if (idea.id === ideaId) {
-        return {
-          ...idea,
-          totalRaised: BigInt(0),
         };
       }
       return idea;
@@ -297,17 +284,12 @@ export default function App() {
                 </Card>
               ) : (
                 trendingIdeas.map((idea) => (
-                  <div key={idea.id} className="space-y-4">
-                    <BackIdea
-                      idea={idea}
-                      onBack={handleBackIdea}
-                      onViewBackers={handleViewBackers}
-                    />
-                    <WithdrawFunds
-                      idea={idea}
-                      onWithdraw={handleWithdrawFunds}
-                    />
-                  </div>
+                  <IdeaCard
+                    key={idea.id}
+                    idea={idea}
+                    onBack={handleBackIdea}
+                    onViewBackers={handleViewBackers}
+                  />
                 ))
               )}
             </div>

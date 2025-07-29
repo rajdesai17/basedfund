@@ -135,7 +135,7 @@ export function Card({
 
 // Icon Component
 type IconProps = {
-  name: "plus" | "heart" | "users" | "trending" | "lightbulb" | "arrow-right" | "check" | "withdraw";
+  name: "plus" | "heart" | "users" | "trending" | "lightbulb" | "arrow-right" | "check";
   size?: "sm" | "md" | "lg";
   className?: string;
 };
@@ -260,22 +260,6 @@ export function Icon({ name, size = "md", className = "" }: IconProps) {
         <polyline points="20 6 9 17 4 12" />
       </svg>
     ),
-    withdraw: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <title>Withdraw</title>
-        <path d="M12 2v6m0 0v6m0-6h6m-6 0H6" />
-        <path d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z" />
-      </svg>
-    ),
   };
 
   return (
@@ -285,7 +269,7 @@ export function Icon({ name, size = "md", className = "" }: IconProps) {
   );
 }
 
-// Post Idea Component with Transaction
+// Post Idea Component
 type PostIdeaProps = {
   onIdeaPosted: (idea: Idea) => void;
 };
@@ -293,37 +277,16 @@ type PostIdeaProps = {
 export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [showTransaction, setShowTransaction] = useState(false);
   const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
-  const sendNotification = useNotification();
 
-  const ideaId = useMemo(() => crypto.randomUUID(), []);
+  const handleSubmit = useCallback(() => {
+    if (!title.trim() || !description.trim() || !address) return;
 
-  const calls = useMemo(() => {
-    if (!address || !title.trim() || !description.trim()) return [];
-
-    return [
-      {
-        to: process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS as `0x${string}`,
-        data: encodeFunctionData({
-          abi: FUNDBASE_ABI,
-          functionName: 'postIdea',
-          args: [ideaId, title.trim(), description.trim()],
-        }),
-        value: BigInt(0),
-      },
-    ];
-  }, [address, title, description, ideaId]);
-
-  const handleTransactionSuccess = useCallback((response: TransactionResponse) => {
-    const transactionHash = response.transactionReceipts[0].transactionHash;
-    
     const newIdea: Idea = {
-      id: ideaId,
+      id: crypto.randomUUID(),
       title: title.trim(),
       description: description.trim(),
-      creator: address!,
+      creator: address,
       totalRaised: BigInt(0),
       backerCount: 0,
       createdAt: Date.now(),
@@ -332,26 +295,7 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
     onIdeaPosted(newIdea);
     setTitle("");
     setDescription("");
-    setShowTransaction(false);
-
-    // Send notification
-    sendNotification({
-      title: "New Idea Posted! 🚀",
-      body: `"${newIdea.title}" was just posted on FundBase!`,
-    });
-
-    console.log(`Idea posted successfully: ${transactionHash}`);
-  }, [ideaId, title, description, address, onIdeaPosted, sendNotification]);
-
-  const handleTransactionError = useCallback((error: TransactionError) => {
-    console.error("Failed to post idea:", error);
-    setShowTransaction(false);
-  }, []);
-
-  const handleSubmit = useCallback(() => {
-    if (!title.trim() || !description.trim() || !address) return;
-    setShowTransaction(true);
-  }, [title, description, address]);
+  }, [title, description, address, onIdeaPosted]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && e.ctrlKey) {
@@ -383,7 +327,6 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             placeholder="e.g., AI-powered coffee maker"
             className="w-full px-3 py-2 bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg text-[var(--app-foreground)] placeholder-[var(--app-foreground-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--app-accent)]"
             maxLength={100}
-            disabled={showTransaction}
           />
         </div>
 
@@ -399,52 +342,30 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             className="w-full px-3 py-2 bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg text-[var(--app-foreground)] placeholder-[var(--app-foreground-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--app-accent)] resize-none"
             rows={3}
             maxLength={500}
-            disabled={showTransaction}
           />
         </div>
 
-        {!showTransaction ? (
-          <Button
-            onClick={handleSubmit}
-            disabled={!title.trim() || !description.trim()}
-            icon={<Icon name="lightbulb" size="sm" />}
-            className="w-full"
-          >
-            Post Idea
-          </Button>
-        ) : (
-          <Transaction
-            calls={calls}
-            onSuccess={handleTransactionSuccess}
-            onError={handleTransactionError}
-          >
-            <TransactionButton className="w-full">
-              Post Idea on Base
-            </TransactionButton>
-            <TransactionStatus>
-              <TransactionStatusAction />
-              <TransactionStatusLabel />
-            </TransactionStatus>
-            <TransactionToast className="mb-4">
-              <TransactionToastIcon />
-              <TransactionToastLabel />
-              <TransactionToastAction />
-            </TransactionToast>
-          </Transaction>
-        )}
+        <Button
+          onClick={handleSubmit}
+          disabled={!title.trim() || !description.trim()}
+          icon={<Icon name="lightbulb" size="sm" />}
+          className="w-full"
+        >
+          Post Idea
+        </Button>
       </div>
     </Card>
   );
 }
 
-// Back Idea Component with Transaction
-type BackIdeaProps = {
+// Idea Card Component
+type IdeaCardProps = {
   idea: Idea;
   onBack: (ideaId: string, amount: bigint) => void;
   onViewBackers: (ideaId: string) => void;
 };
 
-export function BackIdea({ idea, onBack, onViewBackers }: BackIdeaProps) {
+export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
   const [backAmount, setBackAmount] = useState("");
   const [showTransaction, setShowTransaction] = useState(false);
   const { address } = useAccount();
@@ -482,11 +403,11 @@ export function BackIdea({ idea, onBack, onViewBackers }: BackIdeaProps) {
       body: `You backed "${idea.title}" with ${Number(amount) / 1e18} ETH!`,
     });
 
-    console.log(`Idea backed successfully: ${transactionHash}`);
+    console.log(`Transaction successful: ${transactionHash}`);
   }, [backAmount, idea.title, onBack, sendNotification]);
 
   const handleTransactionError = useCallback((error: TransactionError) => {
-    console.error("Failed to back idea:", error);
+    console.error("Transaction failed:", error);
     setShowTransaction(false);
   }, []);
 
@@ -576,98 +497,6 @@ export function BackIdea({ idea, onBack, onViewBackers }: BackIdeaProps) {
         >
           View Backers
         </Button>
-      </div>
-    </Card>
-  );
-}
-
-// Withdraw Funds Component
-type WithdrawFundsProps = {
-  idea: Idea;
-  onWithdraw: (ideaId: string) => void;
-};
-
-export function WithdrawFunds({ idea, onWithdraw }: WithdrawFundsProps) {
-  const [showTransaction, setShowTransaction] = useState(false);
-  const { address } = useAccount();
-
-  const calls = useMemo(() => {
-    if (!address || address !== idea.creator) return [];
-
-    return [
-      {
-        to: process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS as `0x${string}`,
-        data: encodeFunctionData({
-          abi: FUNDBASE_ABI,
-          functionName: 'withdrawFunds',
-          args: [idea.id],
-        }),
-        value: BigInt(0),
-      },
-    ];
-  }, [address, idea.creator, idea.id]);
-
-  const handleTransactionSuccess = useCallback((response: TransactionResponse) => {
-    const transactionHash = response.transactionReceipts[0].transactionHash;
-    
-    onWithdraw(idea.id);
-    setShowTransaction(false);
-
-    console.log(`Funds withdrawn successfully: ${transactionHash}`);
-  }, [idea.id, onWithdraw]);
-
-  const handleTransactionError = useCallback((error: TransactionError) => {
-    console.error("Failed to withdraw funds:", error);
-    setShowTransaction(false);
-  }, []);
-
-  const handleWithdraw = useCallback(() => {
-    if (address !== idea.creator) return;
-    setShowTransaction(true);
-  }, [address, idea.creator]);
-
-  const formatEth = (wei: bigint) => {
-    return Number(wei) / 1e18;
-  };
-
-  if (address !== idea.creator) return null;
-
-  return (
-    <Card title="Withdraw Funds">
-      <div className="space-y-4">
-        <p className="text-[var(--app-foreground-muted)]">
-          You can withdraw {formatEth(idea.totalRaised)} ETH from this idea.
-        </p>
-
-        {!showTransaction ? (
-          <Button
-            onClick={handleWithdraw}
-            disabled={idea.totalRaised === BigInt(0)}
-            icon={<Icon name="withdraw" size="sm" />}
-            className="w-full"
-          >
-            Withdraw Funds
-          </Button>
-        ) : (
-          <Transaction
-            calls={calls}
-            onSuccess={handleTransactionSuccess}
-            onError={handleTransactionError}
-          >
-            <TransactionButton className="w-full">
-              Withdraw {formatEth(idea.totalRaised)} ETH
-            </TransactionButton>
-            <TransactionStatus>
-              <TransactionStatusAction />
-              <TransactionStatusLabel />
-            </TransactionStatus>
-            <TransactionToast className="mb-4">
-              <TransactionToastIcon />
-              <TransactionToastLabel />
-              <TransactionToastAction />
-            </TransactionToast>
-          </Transaction>
-        )}
       </div>
     </Card>
   );
