@@ -80,7 +80,7 @@ export async function backIdeaWithETH(
 
 export async function backIdeaWithToken(
   id: string,
-  token: string,
+  token: `0x${string}`,
   amount: bigint,
   walletClient: any
 ) {
@@ -169,7 +169,7 @@ export async function hasUserBacked(id: string, user: `0x${string}`) {
   });
 }
 
-export async function getTokenBalance(id: string, token: string) {
+export async function getTokenBalance(id: string, token: `0x${string}`) {
   if (!CONTRACT_ADDRESS) {
     throw new Error('Contract address not configured');
   }
