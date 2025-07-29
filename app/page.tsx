@@ -34,34 +34,60 @@ import {
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
-  const [activeTab, setActiveTab] = useState("trending");
   const [ideas, setIdeas] = useState<Idea[]>([
     {
       id: "1",
-      title: "AI-Powered Coffee Maker",
-      description: "A coffee maker that learns your preferences and brews the perfect cup every time using machine learning.",
+      title: "AI-Powered DAO Governance Analytics",
+      description: "Advanced analytics platform for DAO voting patterns, proposal success rates, and governance participation metrics with predictive modeling.",
       creator: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-      totalRaised: BigInt(0.5 * 1e18),
-      backerCount: 3,
+      totalRaisedETH: BigInt(12.4 * 1e18),
+      backerCount: 47,
       createdAt: Date.now() - 86400000,
     },
     {
       id: "2", 
-      title: "Decentralized Social Network",
-      description: "A social platform where users own their data and earn tokens for creating valuable content.",
+      title: "Decentralized Supply Chain Verification",
+      description: "Blockchain-based supply chain tracking system with IoT integration for real-time verification of product authenticity and origin.",
       creator: "0x8ba1f109551bD432803012645Hac136c772c3c",
-      totalRaised: BigInt(1.2 * 1e18),
-      backerCount: 7,
+      totalRaisedETH: BigInt(8.7 * 1e18),
+      backerCount: 32,
       createdAt: Date.now() - 172800000,
     },
     {
       id: "3",
-      title: "NFT-Powered Education Platform",
-      description: "Learn skills, earn NFTs as certificates, and trade them on a marketplace. Education meets Web3.",
+      title: "Professional NFT Portfolio Management",
+      description: "Institutional-grade NFT portfolio management platform with advanced analytics, risk assessment, and automated trading strategies.",
       creator: "0x1234567890123456789012345678901234567890",
-      totalRaised: BigInt(0.3 * 1e18),
-      backerCount: 2,
+      totalRaisedETH: BigInt(15.2 * 1e18),
+      backerCount: 89,
       createdAt: Date.now() - 43200000,
+    },
+    {
+      id: "4",
+      title: "DeFi Yield Optimization Engine",
+      description: "Intelligent yield farming platform that automatically rebalances portfolios across multiple DeFi protocols for maximum returns.",
+      creator: "0xabcdef1234567890abcdef1234567890abcdef12",
+      totalRaisedETH: BigInt(6.8 * 1e18),
+      backerCount: 24,
+      createdAt: Date.now() - 86400000,
+    },
+    {
+      id: "5",
+      title: "Web3 Social Gaming Platform",
+      description: "Next-generation gaming platform where players own their in-game assets as NFTs and earn tokens through competitive gameplay.",
+      creator: "0x9876543210987654321098765432109876543210",
+      totalRaisedETH: BigInt(9.3 * 1e18),
+      backerCount: 156,
+      createdAt: Date.now() - 21600000,
+    },
+    {
+      id: "6",
+      title: "Decentralized Identity Verification",
+      description: "Privacy-preserving identity verification system using zero-knowledge proofs for secure, anonymous credential verification.",
+      creator: "0x5555555555555555555555555555555555555555",
+      totalRaisedETH: BigInt(11.2 * 1e18),
+      backerCount: 67,
+      createdAt: Date.now() - 10800000,
     },
   ]);
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
@@ -85,14 +111,18 @@ export default function App() {
 
   const handleIdeaPosted = useCallback((newIdea: Idea) => {
     setIdeas(prev => [newIdea, ...prev]);
-  }, []);
+    sendNotification({
+      title: "Idea Posted! 🚀",
+      body: `Your idea "${newIdea.title}" has been posted successfully!`,
+    });
+  }, [sendNotification]);
 
-  const handleBackIdea = useCallback((ideaId: string, amount: bigint) => {
+  const handleBackIdea = useCallback((ideaId: string, token: string, amount: bigint) => {
     setIdeas(prev => prev.map(idea => {
       if (idea.id === ideaId) {
         return {
           ...idea,
-          totalRaised: idea.totalRaised + amount,
+          totalRaisedETH: token === "ETH" ? idea.totalRaisedETH + amount : idea.totalRaisedETH,
           backerCount: idea.backerCount + 1,
         };
       }
@@ -105,72 +135,114 @@ export default function App() {
     if (idea) {
       setSelectedIdea(idea);
       
-      // Generate realistic backer data based on the idea
+      // Generate realistic backer data with multiple tokens
       const backerData: { [key: string]: Backer[] } = {
         "1": [
           {
             wallet: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-            amount: BigInt(0.2 * 1e18),
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(2.5 * 1e18),
             timestamp: Date.now() - 86400000,
           },
           {
             wallet: "0x8ba1f109551bD432803012645Hac136c772c3c",
-            amount: BigInt(0.15 * 1e18),
+            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+            amount: BigInt(1500 * 1e6),
             timestamp: Date.now() - 43200000,
           },
           {
             wallet: "0x1234567890123456789012345678901234567890",
-            amount: BigInt(0.15 * 1e18),
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(1.8 * 1e18),
             timestamp: Date.now() - 21600000,
+          },
+          {
+            wallet: "0xabcdef1234567890abcdef1234567890abcdef12",
+            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+            amount: BigInt(800 * 1e6),
+            timestamp: Date.now() - 10800000,
+          },
+          {
+            wallet: "0x9876543210987654321098765432109876543210",
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(3.2 * 1e18),
+            timestamp: Date.now() - 5400000,
           },
         ],
         "2": [
           {
             wallet: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-            amount: BigInt(0.5 * 1e18),
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(2.1 * 1e18),
             timestamp: Date.now() - 172800000,
           },
           {
             wallet: "0x8ba1f109551bD432803012645Hac136c772c3c",
-            amount: BigInt(0.3 * 1e18),
+            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+            amount: BigInt(1200 * 1e6),
             timestamp: Date.now() - 129600000,
           },
           {
             wallet: "0x1234567890123456789012345678901234567890",
-            amount: BigInt(0.2 * 1e18),
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(1.5 * 1e18),
             timestamp: Date.now() - 86400000,
           },
           {
             wallet: "0xabcdef1234567890abcdef1234567890abcdef12",
-            amount: BigInt(0.1 * 1e18),
+            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+            amount: BigInt(900 * 1e6),
             timestamp: Date.now() - 43200000,
           },
           {
             wallet: "0x9876543210987654321098765432109876543210",
-            amount: BigInt(0.05 * 1e18),
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(1.2 * 1e18),
             timestamp: Date.now() - 21600000,
           },
           {
             wallet: "0x5555555555555555555555555555555555555555",
-            amount: BigInt(0.03 * 1e18),
+            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+            amount: BigInt(600 * 1e6),
             timestamp: Date.now() - 10800000,
           },
           {
             wallet: "0x6666666666666666666666666666666666666666",
-            amount: BigInt(0.02 * 1e18),
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(0.7 * 1e18),
             timestamp: Date.now() - 5400000,
           },
         ],
         "3": [
           {
             wallet: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-            amount: BigInt(0.2 * 1e18),
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(4.2 * 1e18),
             timestamp: Date.now() - 43200000,
           },
           {
             wallet: "0x8ba1f109551bD432803012645Hac136c772c3c",
-            amount: BigInt(0.1 * 1e18),
+            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+            amount: BigInt(2500 * 1e6),
             timestamp: Date.now() - 21600000,
+          },
+          {
+            wallet: "0x1234567890123456789012345678901234567890",
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(3.8 * 1e18),
+            timestamp: Date.now() - 10800000,
+          },
+          {
+            wallet: "0xabcdef1234567890abcdef1234567890abcdef12",
+            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+            amount: BigInt(1800 * 1e6),
+            timestamp: Date.now() - 5400000,
+          },
+          {
+            wallet: "0x9876543210987654321098765432109876543210",
+            token: "0x0000000000000000000000000000000000000000", // ETH
+            amount: BigInt(2.4 * 1e18),
+            timestamp: Date.now() - 2700000,
           },
         ],
       };
@@ -183,22 +255,20 @@ export default function App() {
   const saveFrameButton = useMemo(() => {
     if (context && !context.client.added) {
       return (
-        <Button
-          variant="ghost"
-          size="sm"
+        <div
           onClick={handleAddFrame}
-          className="text-[var(--app-accent)] p-4"
-          icon={<Icon name="plus" size="sm" />}
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 px-3 text-blue-600 cursor-pointer"
         >
+          <Icon name="plus" size="sm" />
           Save Frame
-        </Button>
+        </div>
       );
     }
 
     if (frameAdded) {
       return (
-        <div className="flex items-center space-x-1 text-sm font-medium text-[#0052FF] animate-fade-out">
-          <Icon name="check" size="sm" className="text-[#0052FF]" />
+        <div className="flex items-center space-x-1 text-sm font-medium text-green-600 animate-fade-out">
+          <Icon name="check" size="sm" className="text-green-600" />
           <span>Saved</span>
         </div>
       );
@@ -209,107 +279,74 @@ export default function App() {
 
   // Sort ideas by total raised (trending)
   const trendingIdeas = useMemo(() => {
-    return [...ideas].sort((a, b) => Number(b.totalRaised - a.totalRaised));
+    return [...ideas].sort((a, b) => Number(b.totalRaisedETH - a.totalRaisedETH));
+  }, [ideas]);
+
+  const totalFunding = useMemo(() => {
+    return ideas.reduce((total, idea) => total + Number(idea.totalRaisedETH) / 1e18, 0);
   }, [ideas]);
 
   return (
-    <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme from-[var(--app-background)] to-[var(--app-gray)]">
-      <div className="w-full max-w-md mx-auto px-4 py-3">
-        <header className="flex justify-between items-center mb-3 h-11">
-          <div>
-            <div className="flex items-center space-x-2">
-              <Wallet className="z-10">
-                <ConnectWallet>
-                  <Name className="text-inherit" />
-                </ConnectWallet>
-                <WalletDropdown>
-                  <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-                    <Avatar />
-                    <Name />
-                    <Address />
-                    <EthBalance />
-                  </Identity>
-                  <WalletDropdownDisconnect />
-                </WalletDropdown>
-              </Wallet>
+    <div className="h-screen bg-white flex flex-col">
+      {/* Header */}
+      <header className="border-b border-gray-200 px-6 py-4 flex items-center justify-between bg-white">
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 bg-blue-600 rounded"></div>
+          <h1 className="text-lg font-medium text-gray-900">FundBase</h1>
+          <span className="text-sm text-gray-500">• Professional Platform</span>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <Wallet className="z-10">
+            <ConnectWallet>
+              <div className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 text-sm bg-transparent border-gray-300">
+                <Name className="text-inherit" />
+              </div>
+            </ConnectWallet>
+            <WalletDropdown>
+              <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+                <Avatar />
+                <Name />
+                <Address />
+                <EthBalance />
+              </Identity>
+              <WalletDropdownDisconnect />
+            </WalletDropdown>
+          </Wallet>
+          {saveFrameButton}
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex min-h-0">
+        {/* Left Sidebar - Post New Idea */}
+        <div className="w-80 border-r border-gray-200 p-6">
+          <PostIdea onIdeaPosted={handleIdeaPosted} />
+        </div>
+
+        {/* Right Panel - Project Registry */}
+        <div className="flex-1 p-6 overflow-auto">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-base font-medium text-gray-900">Project Registry</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {ideas.length} projects • {totalFunding.toFixed(1)} ETH total funding
+              </p>
             </div>
+            <div className="text-xs text-gray-500">Sorted by funding amount</div>
           </div>
-          <div>{saveFrameButton}</div>
-        </header>
-
-        <main className="flex-1">
-          {/* Navigation Tabs */}
-          <div className="flex space-x-1 mb-4 bg-[var(--app-card-bg)] rounded-lg p-1">
-            <button
-              onClick={() => setActiveTab("trending")}
-              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "trending"
-                  ? "bg-[var(--app-accent)] text-[var(--app-background)]"
-                  : "text-[var(--app-foreground-muted)] hover:text-[var(--app-foreground)]"
-              }`}
-            >
-              <Icon name="trending" size="sm" className="inline mr-1" />
-              Trending
-            </button>
-            <button
-              onClick={() => setActiveTab("post")}
-              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "post"
-                  ? "bg-[var(--app-accent)] text-[var(--app-background)]"
-                  : "text-[var(--app-foreground-muted)] hover:text-[var(--app-foreground)]"
-              }`}
-            >
-              <Icon name="plus" size="sm" className="inline mr-1" />
-              Post Idea
-            </button>
+          
+          <div className="space-y-4">
+            {trendingIdeas.map((idea) => (
+              <IdeaCard
+                key={idea.id}
+                idea={idea}
+                onBack={handleBackIdea}
+                onViewBackers={handleViewBackers}
+              />
+            ))}
           </div>
-
-          {/* Content */}
-          {activeTab === "trending" && (
-            <div className="space-y-4">
-              {trendingIdeas.length === 0 ? (
-                <Card title="Welcome to FundBase">
-                  <div className="text-center space-y-4">
-                    <Icon name="lightbulb" size="lg" className="mx-auto text-[var(--app-accent)]" />
-                    <p className="text-[var(--app-foreground-muted)]">
-                      No ideas posted yet. Be the first to share your startup idea!
-                    </p>
-                    <Button
-                      onClick={() => setActiveTab("post")}
-                      icon={<Icon name="plus" size="sm" />}
-                    >
-                      Post Your First Idea
-                    </Button>
-                  </div>
-                </Card>
-              ) : (
-                trendingIdeas.map((idea) => (
-                  <IdeaCard
-                    key={idea.id}
-                    idea={idea}
-                    onBack={handleBackIdea}
-                    onViewBackers={handleViewBackers}
-                  />
-                ))
-              )}
-            </div>
-          )}
-
-          {activeTab === "post" && (
-            <PostIdea onIdeaPosted={handleIdeaPosted} />
-          )}
-        </main>
-
-        <footer className="mt-2 pt-4 flex justify-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-[var(--ock-text-foreground-muted)] text-xs"
-            onClick={() => openUrl("https://base.org/builders/minikit")}
-          >
-            Built on Base with MiniKit
-          </Button>
-        </footer>
+        </div>
       </div>
 
       {/* Backers Modal */}

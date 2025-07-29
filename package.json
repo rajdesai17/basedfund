@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -11,32 +11,32 @@
     "deploy:contract:mainnet": "hardhat run scripts/deploy-contract.js --network base"
   },
   "dependencies": {
-    "@coinbase/onchainkit": "latest",
-    "@farcaster/frame-sdk": "^0.0.60",
-    "@upstash/redis": "^1.34.4",
-    "next": "^15.3.3",
-    "react": "^18",
-    "react-dom": "^18",
-    "@tanstack/react-query": "^5",
-    "viem": "^2.27.2",
-    "wagmi": "^2.14.11"
-  },
-  "devDependencies": {
+    "@coinbase/onchainkit": "^0.0.1",
+    "@coinbase/onchainkit/frame": "^0.0.1",
+    "@coinbase/onchainkit/identity": "^0.0.1",
+    "@coinbase/onchainkit/minikit": "^0.0.1",
+    "@coinbase/onchainkit/transaction": "^0.0.1",
+    "@coinbase/onchainkit/wallet": "^0.0.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@upstash/redis": "^1.28.4",
+    "autoprefixer": "^10.0.1",
     "eslint": "^8",
-    "eslint-config-next": "15.3.3",
-    "eslint-config-prettier": "^10.1.1",
-    "eslint-plugin-prettier": "^5.2.3",
-    "eslint-plugin-react": "^7.37.4",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "prettier": "^3.5.3",
+    "eslint-config-next": "15.4.4",
+    "next": "15.4.4",
     "postcss": "^8",
-    "tailwindcss": "^3.4.1",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwindcss": "^4.0.0",
     "typescript": "^5",
-    "hardhat": "^2.19.4",
+    "viem": "^2.7.9",
+    "wagmi": "^2.5.7"
+  },
+  "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "dotenv": "^16.3.1"
+    "@openzeppelin/contracts": "^5.0.1",
+    "dotenv": "^16.3.1",
+    "hardhat": "^2.19.4"
   }
 }
