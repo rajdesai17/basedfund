@@ -74,7 +74,7 @@ export function Button({
 
   const variantClasses = {
     primary:
-      "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl",
+      "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl",
     secondary:
       "bg-gray-100 hover:bg-gray-200 text-gray-900 border border-gray-200",
     outline:
@@ -82,9 +82,9 @@ export function Button({
     ghost:
       "hover:bg-gray-100 text-gray-600 hover:text-gray-900",
     success:
-      "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl",
+      "bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl",
     warning:
-      "bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white shadow-lg hover:shadow-xl",
+      "bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl",
   };
 
   const sizeClasses = {
@@ -900,7 +900,7 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
   const isFunded = fundingPercentage >= 100;
 
   return (
-    <div className="relative bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+    <div className="relative bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 mb-4">
       <div className="p-5 flex items-start gap-4">
         {/* Icon based on status */}
         <div
@@ -950,20 +950,19 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
             <span>
               Date: <span className="text-gray-700">{formatDate(idea.createdAt)}</span>
             </span>
-            </div>
           </div>
         </div>
+      </div>
 
       {/* Funding Actions */}
       <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-xs h-8 px-3 bg-white border-gray-300 hover:bg-gray-100"
+        <button
+          type="button"
+          className="inline-flex items-center justify-center text-xs h-8 px-3 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors"
           onClick={() => onViewBackers(idea.id)}
         >
           View Backers
-        </Button>
+        </button>
 
         <div className="flex items-center gap-2">
           <input
@@ -971,45 +970,46 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
             placeholder="0.1"
             value={backAmount}
             onChange={(e) => setBackAmount(e.target.value)}
-            className="w-20 h-8 text-sm border border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg px-2 bg-white text-gray-900 placeholder-gray-500"
+            className="w-20 h-8 text-sm border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg px-2 bg-white text-gray-900 placeholder-gray-500"
             step="0.01"
           />
-              <select
-                value={selectedToken}
-                onChange={(e) => setSelectedToken(e.target.value)}
-            className="w-[70px] h-8 text-sm bg-white border border-gray-300 rounded-lg px-2 focus:border-blue-500 focus:ring-blue-500 text-gray-900"
-              >
-                <option value="ETH">ETH</option>
-                <option value="USDC">USDC</option>
-                <option value="ZORA">ZORA</option>
-              </select>
+          <select
+            value={selectedToken}
+            onChange={(e) => setSelectedToken(e.target.value)}
+            className="w-[70px] h-8 text-sm bg-white border border-gray-300 rounded-lg px-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-gray-900"
+          >
+            <option value="ETH">ETH</option>
+            <option value="USDC">USDC</option>
+            <option value="ZORA">ZORA</option>
+          </select>
           {!showTransaction ? (
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1 h-8"
+            <button
+              type="button"
+              className="inline-flex items-center justify-center text-sm px-3 py-1 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!backAmount || Number.parseFloat(backAmount) <= 0}
               onClick={handleBack}
             >
               Fund
-            </Button>
-        ) : (
-          <Transaction
-            calls={calls}
-            onSuccess={handleTransactionSuccess}
-            onError={handleTransactionError}
-          >
-              <TransactionButton className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1 h-8" />
-            <TransactionStatus>
-              <TransactionStatusAction />
-              <TransactionStatusLabel />
-            </TransactionStatus>
-            <TransactionToast className="mb-4">
-              <TransactionToastIcon />
-              <TransactionToastLabel />
-              <TransactionToastAction />
-            </TransactionToast>
-          </Transaction>
-        )}
-      </div>
+            </button>
+          ) : (
+            <Transaction
+              calls={calls}
+              onSuccess={handleTransactionSuccess}
+              onError={handleTransactionError}
+            >
+              <TransactionButton className="inline-flex items-center justify-center text-sm px-3 py-1 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors" />
+              <TransactionStatus>
+                <TransactionStatusAction />
+                <TransactionStatusLabel />
+              </TransactionStatus>
+              <TransactionToast className="mb-4">
+                <TransactionToastIcon />
+                <TransactionToastLabel />
+                <TransactionToastAction />
+              </TransactionToast>
+            </Transaction>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1073,8 +1073,11 @@ export function BackersModal({ idea, backers, isOpen, onClose }: BackersModalPro
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors"
+            aria-label="Close modal"
           >
-            <Icon name="plus" size="sm" className="rotate-45" />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
         
