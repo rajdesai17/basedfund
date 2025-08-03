@@ -1,5 +1,5 @@
 import { createPublicClient, http, parseAbi, type WalletClient } from 'viem';
-import { base } from 'viem/chains';
+import { baseSepolia } from 'viem/chains';
 
 // FundBase Contract ABI
 export const FUNDBASE_ABI = parseAbi([
@@ -29,9 +29,9 @@ export const TOKENS = {
 // Contract address (will be set after deployment)
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS as `0x${string}`;
 
-// Create public client for Base
+// Create public client for Base Sepolia
 export const publicClient = createPublicClient({
-  chain: base,
+  chain: baseSepolia,
   transport: http(),
 });
 

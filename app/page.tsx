@@ -30,66 +30,13 @@ import {
   type Idea,
   type Backer
 } from "./components/FundBaseComponents";
+import { getAllIdeas } from "../lib/contract";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
-  const [ideas, setIdeas] = useState<Idea[]>([
-    {
-      id: "1",
-      title: "AI-Powered DAO Governance Analytics",
-      description: "Advanced analytics platform for DAO voting patterns, proposal success rates, and governance participation metrics with predictive modeling.",
-      creator: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-      totalRaisedETH: BigInt(12.4 * 1e18),
-      backerCount: 47,
-      createdAt: Date.now() - 86400000,
-    },
-    {
-      id: "2", 
-      title: "Decentralized Supply Chain Verification",
-      description: "Blockchain-based supply chain tracking system with IoT integration for real-time verification of product authenticity and origin.",
-      creator: "0x8ba1f109551bD432803012645Hac136c772c3c",
-      totalRaisedETH: BigInt(8.7 * 1e18),
-      backerCount: 32,
-      createdAt: Date.now() - 172800000,
-    },
-    {
-      id: "3",
-      title: "Professional NFT Portfolio Management",
-      description: "Institutional-grade NFT portfolio management platform with advanced analytics, risk assessment, and automated trading strategies.",
-      creator: "0x1234567890123456789012345678901234567890",
-      totalRaisedETH: BigInt(15.2 * 1e18),
-      backerCount: 89,
-      createdAt: Date.now() - 43200000,
-    },
-    {
-      id: "4",
-      title: "DeFi Yield Optimization Engine",
-      description: "Intelligent yield farming platform that automatically rebalances portfolios across multiple DeFi protocols for maximum returns.",
-      creator: "0xabcdef1234567890abcdef1234567890abcdef12",
-      totalRaisedETH: BigInt(6.8 * 1e18),
-      backerCount: 24,
-      createdAt: Date.now() - 86400000,
-    },
-    {
-      id: "5",
-      title: "Web3 Social Gaming Platform",
-      description: "Next-generation gaming platform where players own their in-game assets as NFTs and earn tokens through competitive gameplay.",
-      creator: "0x9876543210987654321098765432109876543210",
-      totalRaisedETH: BigInt(9.3 * 1e18),
-      backerCount: 156,
-      createdAt: Date.now() - 21600000,
-    },
-    {
-      id: "6",
-      title: "Decentralized Identity Verification",
-      description: "Privacy-preserving identity verification system using zero-knowledge proofs for secure, anonymous credential verification.",
-      creator: "0x5555555555555555555555555555555555555555",
-      totalRaisedETH: BigInt(11.2 * 1e18),
-      backerCount: 67,
-      createdAt: Date.now() - 10800000,
-    },
-  ]);
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
   const [backers, setBackers] = useState<Backer[]>([]);
   const [showBackersModal, setShowBackersModal] = useState(false);
@@ -98,11 +45,55 @@ export default function App() {
   const openUrl = useOpenUrl();
   const sendNotification = useNotification();
 
+  // Load ideas from blockchain
+  const loadIdeasFromContract = useCallback(async () => {
+    try {
+      setIsLoadingIdeas(true);
+      const contractIdeas = await getAllIdeas();
+      
+      console.log("Contract ideas result:", contractIdeas);
+      
+      // Check if we got valid data
+      if (!contractIdeas || contractIdeas.length === 0) {
+        console.log("No ideas found in contract");
+        setIdeas([]);
+        return;
+      }
+      
+      // Transform contract data to match our Idea type
+      const transformedIdeas: Idea[] = contractIdeas
+        .filter((idea: any) => idea && idea[0] && idea[1] && idea[2] && idea[7]) // Filter out empty ideas and ensure exists is true
+        .map((idea: any) => ({
+          id: idea[0], // id
+          title: idea[1], // title
+          description: idea[2], // description
+          creator: idea[3], // creator
+          totalRaisedETH: idea[4], // totalRaisedETH
+          backerCount: idea[5], // backerCount
+          createdAt: Number(idea[6]) * 1000, // createdAt (convert from seconds to milliseconds)
+        }));
+      
+      console.log("Transformed ideas:", transformedIdeas);
+      setIdeas(transformedIdeas);
+    } catch (error) {
+      console.error("Failed to load ideas from contract:", error);
+      // Keep empty array if loading fails
+      setIdeas([]);
+    } finally {
+      setIsLoadingIdeas(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isFrameReady) {
       setFrameReady();
     }
   }, [setFrameReady, isFrameReady]);
+
+  // Load ideas from blockchain when component mounts
+  useEffect(() => {
+    loadIdeasFromContract();
+  }, [loadIdeasFromContract]);
 
   const handleAddFrame = useCallback(async () => {
     const frameAdded = await addFrame();
@@ -110,25 +101,18 @@ export default function App() {
   }, [addFrame]);
 
   const handleIdeaPosted = useCallback((newIdea: Idea) => {
-    setIdeas(prev => [newIdea, ...prev]);
+    // Reload all ideas from blockchain to get the latest data
+    loadIdeasFromContract();
     sendNotification({
       title: "Idea Posted! 🚀",
       body: `Your idea "${newIdea.title}" has been posted successfully!`,
     });
-  }, [sendNotification]);
+  }, [loadIdeasFromContract, sendNotification]);
 
   const handleBackIdea = useCallback((ideaId: string, token: string, amount: bigint) => {
-    setIdeas(prev => prev.map(idea => {
-      if (idea.id === ideaId) {
-        return {
-          ...idea,
-          totalRaisedETH: token === "ETH" ? idea.totalRaisedETH + amount : idea.totalRaisedETH,
-          backerCount: idea.backerCount + 1,
-        };
-      }
-      return idea;
-    }));
-  }, []);
+    // Reload all ideas from blockchain to get the latest data
+    loadIdeasFromContract();
+  }, [loadIdeasFromContract]);
 
   const handleViewBackers = useCallback((ideaId: string) => {
     const idea = ideas.find(i => i.id === ideaId);
@@ -252,6 +236,16 @@ export default function App() {
     }
   }, [ideas]);
 
+  const handleWithdrawFunds = useCallback((ideaId: string) => {
+    // Reload all ideas from blockchain to get the latest data
+    loadIdeasFromContract();
+
+    sendNotification({
+      title: "Funds Withdrawn! 💰",
+      body: "Funds have been successfully withdrawn to your wallet.",
+    });
+  }, [loadIdeasFromContract, sendNotification]);
+
   const saveFrameButton = useMemo(() => {
     if (context && !context.client.added) {
       return (
@@ -278,7 +272,7 @@ export default function App() {
   }, [context, frameAdded, handleAddFrame]);
 
   // Sort ideas by total raised (trending)
-  const trendingIdeas = useMemo(() => {
+  const sortedIdeas = useMemo(() => {
     return [...ideas].sort((a, b) => Number(b.totalRaisedETH - a.totalRaisedETH));
   }, [ideas]);
 
@@ -337,14 +331,26 @@ export default function App() {
           </div>
           
           <div className="space-y-4">
-            {trendingIdeas.map((idea) => (
-              <IdeaCard
-                key={idea.id}
-                idea={idea}
-                onBack={handleBackIdea}
-                onViewBackers={handleViewBackers}
-              />
-            ))}
+            {isLoadingIdeas ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-gray-600">Loading ideas from blockchain...</p>
+              </div>
+            ) : ideas.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">No ideas posted yet. Be the first to post an idea!</p>
+              </div>
+            ) : (
+              sortedIdeas.map((idea) => (
+                <IdeaCard
+                  key={idea.id}
+                  idea={idea}
+                  onBack={handleBackIdea}
+                  onViewBackers={handleViewBackers}
+                  onWithdraw={handleWithdrawFunds}
+                />
+              ))
+            )}
           </div>
         </div>
       </div>

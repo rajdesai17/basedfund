@@ -804,12 +804,13 @@ type IdeaCardProps = {
   idea: Idea;
   onBack: (ideaId: string, token: string, amount: bigint) => void;
   onViewBackers: (ideaId: string) => void;
+  onWithdraw?: (ideaId: string) => void;
 };
 
-export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
+export function IdeaCard({ idea, onBack, onViewBackers, onWithdraw }: IdeaCardProps) {
   const [backAmount, setBackAmount] = useState("0.1");
   const [selectedToken, setSelectedToken] = useState("ETH");
-  const [showTransaction, setShowTransaction] = useState(false);
+  const [showWithdrawTransaction, setShowWithdrawTransaction] = useState(false);
   const { address } = useAccount();
   const sendNotification = useNotification();
 
@@ -847,6 +848,23 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
     }
   }, [address, backAmount, idea.id, selectedToken]);
 
+  // Withdrawal transaction calls
+  const withdrawCalls = useMemo(() => {
+    if (!address) return [];
+
+    return [
+      {
+        to: (process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`,
+        data: encodeFunctionData({
+          abi: FUNDBASE_ABI,
+          functionName: 'withdrawFunds',
+          args: [idea.id],
+        }),
+        value: BigInt(0),
+      },
+    ];
+  }, [address, idea.id]);
+
   const handleTransactionSuccess = useCallback((response: TransactionResponse) => {
     const transactionHash = response.transactionReceipts[0].transactionHash;
     const amount = selectedToken === "ETH" 
@@ -855,7 +873,6 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
     
     onBack(idea.id, selectedToken, amount);
     setBackAmount("0.1");
-    setShowTransaction(false);
 
     sendNotification({
       title: "Idea Backed! 💰",
@@ -867,12 +884,44 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
 
   const handleTransactionError = useCallback((error: TransactionError) => {
     console.error("Transaction failed:", error);
-    setShowTransaction(false);
-  }, []);
+    
+    // Show user-friendly error message
+    const errorMessage = error.message || "Transaction failed. Please try again.";
+    sendNotification({
+      title: "Transaction Failed ❌",
+      body: errorMessage,
+    });
+  }, [sendNotification]);
+
+  const handleWithdrawSuccess = useCallback((response: TransactionResponse) => {
+    const transactionHash = response.transactionReceipts[0].transactionHash;
+    
+    setShowWithdrawTransaction(false);
+    onWithdraw?.(idea.id);
+
+    sendNotification({
+      title: "Funds Withdrawn! 💰",
+      body: `Successfully withdrew funds from "${idea.title}"!`,
+    });
+
+    console.log(`Withdrawal successful: ${transactionHash}`);
+  }, [idea.title, onWithdraw, sendNotification]);
+
+  const handleWithdrawError = useCallback((error: TransactionError) => {
+    console.error("Withdrawal failed:", error);
+    setShowWithdrawTransaction(false);
+    
+    // Show user-friendly error message
+    const errorMessage = error.message || "Withdrawal failed. Please try again.";
+    sendNotification({
+      title: "Withdrawal Failed ❌",
+      body: errorMessage,
+    });
+  }, [sendNotification]);
 
   const handleBack = useCallback(() => {
     if (!backAmount || !address) return;
-    setShowTransaction(true);
+    // This function is no longer needed since we're using direct transaction
   }, [backAmount, address]);
 
   const formatEth = (wei: bigint) => {
@@ -956,13 +1005,45 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
 
       {/* Funding Actions */}
       <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-4">
-        <button
-          type="button"
-          className="inline-flex items-center justify-center text-xs h-8 px-3 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors"
-          onClick={() => onViewBackers(idea.id)}
-        >
-          View Backers
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center text-xs h-8 px-3 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors"
+            onClick={() => onViewBackers(idea.id)}
+          >
+            View Backers
+          </button>
+
+          {/* Withdraw button for creators */}
+          {address && address.toLowerCase() === idea.creator.toLowerCase() && (
+            !showWithdrawTransaction ? (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center text-xs h-8 px-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                onClick={() => setShowWithdrawTransaction(true)}
+              >
+                Withdraw Funds
+              </button>
+            ) : (
+              <Transaction
+                calls={withdrawCalls}
+                onSuccess={handleWithdrawSuccess}
+                onError={handleWithdrawError}
+              >
+                <TransactionButton className="inline-flex items-center justify-center text-xs h-8 px-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors" />
+                <TransactionStatus>
+                  <TransactionStatusAction />
+                  <TransactionStatusLabel />
+                </TransactionStatus>
+                <TransactionToast className="mb-4">
+                  <TransactionToastIcon />
+                  <TransactionToastLabel />
+                  <TransactionToastAction />
+                </TransactionToast>
+              </Transaction>
+            )
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <input
@@ -982,33 +1063,25 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
             <option value="USDC">USDC</option>
             <option value="ZORA">ZORA</option>
           </select>
-          {!showTransaction ? (
-            <button
-              type="button"
+          <Transaction
+            calls={calls}
+            onSuccess={handleTransactionSuccess}
+            onError={handleTransactionError}
+          >
+            <TransactionButton 
               className="inline-flex items-center justify-center text-sm px-3 py-1 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!backAmount || Number.parseFloat(backAmount) <= 0}
-              onClick={handleBack}
-            >
-              Fund
-            </button>
-          ) : (
-            <Transaction
-              calls={calls}
-              onSuccess={handleTransactionSuccess}
-              onError={handleTransactionError}
-            >
-              <TransactionButton className="inline-flex items-center justify-center text-sm px-3 py-1 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors" />
-              <TransactionStatus>
-                <TransactionStatusAction />
-                <TransactionStatusLabel />
-              </TransactionStatus>
-              <TransactionToast className="mb-4">
-                <TransactionToastIcon />
-                <TransactionToastLabel />
-                <TransactionToastAction />
-              </TransactionToast>
-            </Transaction>
-          )}
+            />
+            <TransactionStatus>
+              <TransactionStatusAction />
+              <TransactionStatusLabel />
+            </TransactionStatus>
+            <TransactionToast className="mb-4">
+              <TransactionToastIcon />
+              <TransactionToastLabel />
+              <TransactionToastAction />
+            </TransactionToast>
+          </Transaction>
         </div>
       </div>
     </div>
