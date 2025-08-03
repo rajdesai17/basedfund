@@ -304,10 +304,10 @@ export function Card({
     >
       {(title || subtitle) && (
         <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-          {title && (
+      {title && (
             <h3 className="text-lg font-semibold text-gray-900">
-              {title}
-            </h3>
+            {title}
+          </h3>
           )}
           {subtitle && (
             <p className="text-sm text-gray-600 mt-1">
@@ -711,8 +711,8 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
           <div className="text-center space-y-4">
             <Icon name="lightbulb" size="lg" className="mx-auto text-blue-600" />
             <p className="text-gray-600">
-              Connect your wallet to post an idea
-            </p>
+          Connect your wallet to post an idea
+        </p>
           </div>
         </div>
       </div>
@@ -950,9 +950,9 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
             <span>
               Date: <span className="text-gray-700">{formatDate(idea.createdAt)}</span>
             </span>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Funding Actions */}
       <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-4">
@@ -974,15 +974,15 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
             className="w-20 h-8 text-sm border border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg px-2 bg-white text-gray-900 placeholder-gray-500"
             step="0.01"
           />
-          <select
-            value={selectedToken}
-            onChange={(e) => setSelectedToken(e.target.value)}
+              <select
+                value={selectedToken}
+                onChange={(e) => setSelectedToken(e.target.value)}
             className="w-[70px] h-8 text-sm bg-white border border-gray-300 rounded-lg px-2 focus:border-blue-500 focus:ring-blue-500 text-gray-900"
-          >
-            <option value="ETH">ETH</option>
-            <option value="USDC">USDC</option>
-            <option value="ZORA">ZORA</option>
-          </select>
+              >
+                <option value="ETH">ETH</option>
+                <option value="USDC">USDC</option>
+                <option value="ZORA">ZORA</option>
+              </select>
           {!showTransaction ? (
             <Button
               className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1 h-8"
@@ -991,25 +991,25 @@ export function IdeaCard({ idea, onBack, onViewBackers }: IdeaCardProps) {
             >
               Fund
             </Button>
-          ) : (
-            <Transaction
-              calls={calls}
-              onSuccess={handleTransactionSuccess}
-              onError={handleTransactionError}
-            >
+        ) : (
+          <Transaction
+            calls={calls}
+            onSuccess={handleTransactionSuccess}
+            onError={handleTransactionError}
+          >
               <TransactionButton className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1 h-8" />
-              <TransactionStatus>
-                <TransactionStatusAction />
-                <TransactionStatusLabel />
-              </TransactionStatus>
-              <TransactionToast className="mb-4">
-                <TransactionToastIcon />
-                <TransactionToastLabel />
-                <TransactionToastAction />
-              </TransactionToast>
-            </Transaction>
-          )}
-        </div>
+            <TransactionStatus>
+              <TransactionStatusAction />
+              <TransactionStatusLabel />
+            </TransactionStatus>
+            <TransactionToast className="mb-4">
+              <TransactionToastIcon />
+              <TransactionToastLabel />
+              <TransactionToastAction />
+            </TransactionToast>
+          </Transaction>
+        )}
+      </div>
       </div>
     </div>
   );
@@ -1065,7 +1065,7 @@ export function BackersModal({ idea, backers, isOpen, onClose }: BackersModalPro
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
               Backers for &quot;{idea.title}&quot;
-            </h3>
+          </h3>
             <p className="text-sm text-gray-600 mt-1">
               A record of all contributions to this project
             </p>
@@ -1083,8 +1083,8 @@ export function BackersModal({ idea, backers, isOpen, onClose }: BackersModalPro
             <div className="text-center py-8">
               <Icon name="users" size="lg" className="mx-auto text-gray-400 mb-4" />
               <p className="text-gray-600">
-                No backers yet. Be the first!
-              </p>
+              No backers yet. Be the first!
+            </p>
             </div>
           ) : (
             <div className="space-y-3">
