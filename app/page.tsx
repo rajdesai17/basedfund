@@ -107,39 +107,90 @@ export default function App() {
         return;
       }
       
+      // Debug: Log the structure of the first idea
+      console.log("First idea structure:", contractIdeas[0]);
+      console.log("First idea type:", typeof contractIdeas[0]);
+      console.log("First idea is array:", Array.isArray(contractIdeas[0]));
+      
       // Transform contract data to match our Idea type with better error handling
       const transformedIdeas: Idea[] = contractIdeas
         .filter((idea: unknown) => {
           try {
-            const ideaArray = idea as unknown[];
-            // More robust validation
-            return ideaArray && 
-                   Array.isArray(ideaArray) && 
-                   ideaArray.length >= 7 &&
-                   typeof ideaArray[0] === 'string' && 
-                   typeof ideaArray[1] === 'string' && 
-                   typeof ideaArray[2] === 'string' &&
-                   typeof ideaArray[3] === 'string' &&
-                   (typeof ideaArray[4] === 'bigint' || typeof ideaArray[4] === 'number') &&
-                   (typeof ideaArray[5] === 'number') &&
-                   (typeof ideaArray[6] === 'number' || typeof ideaArray[6] === 'bigint');
+            // Handle both array and object formats
+            const isArray = Array.isArray(idea);
+            const isObject = idea && typeof idea === 'object' && !Array.isArray(idea);
+            
+            console.log("Filtering idea:", idea);
+            console.log("Is array:", isArray);
+            console.log("Is object:", isObject);
+            
+            if (isArray) {
+              // Handle array format (legacy)
+              const ideaArray = idea as unknown[];
+              const isValid = ideaArray && 
+                     ideaArray.length >= 7 &&
+                     typeof ideaArray[0] === 'string' && 
+                     typeof ideaArray[1] === 'string' && 
+                     typeof ideaArray[2] === 'string' &&
+                     typeof ideaArray[3] === 'string' &&
+                     (typeof ideaArray[4] === 'bigint' || typeof ideaArray[4] === 'number') &&
+                     (typeof ideaArray[5] === 'number') &&
+                     (typeof ideaArray[6] === 'number' || typeof ideaArray[6] === 'bigint');
+              
+              console.log("Array validation result:", isValid);
+              return isValid;
+            } else if (isObject) {
+              // Handle object format (named tuple from Viem)
+              const ideaObj = idea as Record<string, unknown>;
+              const hasRequiredProps = ideaObj.id && ideaObj.title && ideaObj.description && 
+                                     ideaObj.creator && ideaObj.totalRaisedETH !== undefined && 
+                                     ideaObj.backerCount !== undefined && ideaObj.createdAt !== undefined;
+              
+              console.log("Object validation result:", hasRequiredProps);
+              return hasRequiredProps;
+            }
+            
+            return false;
           } catch (error) {
-            console.warn("Invalid idea data:", idea);
+            console.warn("Invalid idea data:", idea, error);
             return false;
           }
         })
         .map((idea: unknown) => {
           try {
-            const ideaArray = idea as unknown[];
-            return {
-              id: String(ideaArray[0]), // Ensure string
-              title: String(ideaArray[1]), // Ensure string
-              description: String(ideaArray[2]), // Ensure string
-              creator: String(ideaArray[3]), // Ensure string
-              totalRaisedETH: BigInt(typeof ideaArray[4] === 'number' || typeof ideaArray[4] === 'bigint' ? ideaArray[4] : 0), // Ensure BigInt
-              backerCount: Number(typeof ideaArray[5] === 'number' ? ideaArray[5] : 0), // Ensure number
-              createdAt: Number(typeof ideaArray[6] === 'number' || typeof ideaArray[6] === 'bigint' ? ideaArray[6] : 0) * 1000, // Convert from seconds to milliseconds
-            };
+            console.log("Transforming idea:", idea);
+            
+            if (Array.isArray(idea)) {
+              // Handle array format (legacy)
+              const ideaArray = idea as unknown[];
+              const transformed = {
+                id: String(ideaArray[0]),
+                title: String(ideaArray[1]),
+                description: String(ideaArray[2]),
+                creator: String(ideaArray[3]),
+                totalRaisedETH: BigInt(typeof ideaArray[4] === 'number' || typeof ideaArray[4] === 'bigint' ? ideaArray[4] : 0),
+                backerCount: Number(typeof ideaArray[5] === 'number' ? ideaArray[5] : 0),
+                createdAt: Number(typeof ideaArray[6] === 'number' || typeof ideaArray[6] === 'bigint' ? ideaArray[6] : 0) * 1000,
+              };
+              
+              console.log("Transformed array idea:", transformed);
+              return transformed;
+            } else {
+              // Handle object format (named tuple from Viem)
+              const ideaObj = idea as Record<string, unknown>;
+              const transformed = {
+                id: String(ideaObj.id),
+                title: String(ideaObj.title),
+                description: String(ideaObj.description),
+                creator: String(ideaObj.creator),
+                totalRaisedETH: BigInt(typeof ideaObj.totalRaisedETH === 'bigint' || typeof ideaObj.totalRaisedETH === 'number' ? ideaObj.totalRaisedETH : 0n),
+                backerCount: Number(ideaObj.backerCount || 0),
+                createdAt: Number(ideaObj.createdAt || 0) * 1000, // Convert from seconds to milliseconds
+              };
+              
+              console.log("Transformed object idea:", transformed);
+              return transformed;
+            }
           } catch (error) {
             console.error("Error transforming idea:", idea, error);
             // Return a fallback idea to prevent crashes
@@ -190,13 +241,21 @@ export default function App() {
   const handleIdeaPosted = useCallback((idea: Idea) => {
     console.log("✅ Idea posted successfully:", idea.id);
     
-    // Add the new idea to the list immediately
-    setIdeas(prevIdeas => [idea, ...prevIdeas]);
+    // Add the new idea to the list immediately for instant UI feedback
+    setIdeas(prevIdeas => {
+      // Check if idea already exists to avoid duplicates
+      const exists = prevIdeas.find(existing => existing.id === idea.id);
+      if (exists) {
+        return prevIdeas;
+      }
+      return [idea, ...prevIdeas];
+    });
     
-    // Reload ideas from contract after a short delay to ensure blockchain state is updated
+    // Reload ideas from contract after a longer delay to ensure blockchain state is updated
     setTimeout(() => {
+      console.log("🔄 Reloading ideas from blockchain after posting...");
       loadIdeasFromContract();
-    }, 2000);
+    }, 5000); // Increased delay to ensure blockchain state is updated
     
     // Send notification
     sendNotification({
