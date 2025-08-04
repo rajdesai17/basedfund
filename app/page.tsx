@@ -3,7 +3,6 @@
 import {
   useMiniKit,
   useAddFrame,
-  useOpenUrl,
   useNotification,
 } from "@coinbase/onchainkit/minikit";
 import {
@@ -21,9 +20,7 @@ import {
 } from "@coinbase/onchainkit/wallet";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { 
-  Button, 
   Icon, 
-  Card,
   PostIdea,
   IdeaCard,
   BackersModal,
@@ -42,7 +39,6 @@ export default function App() {
   const [showBackersModal, setShowBackersModal] = useState(false);
 
   const addFrame = useAddFrame();
-  const openUrl = useOpenUrl();
   const sendNotification = useNotification();
 
   // Load ideas from blockchain
@@ -62,16 +58,22 @@ export default function App() {
       
       // Transform contract data to match our Idea type
       const transformedIdeas: Idea[] = contractIdeas
-        .filter((idea: any) => idea && idea[0] && idea[1] && idea[2] && idea[7]) // Filter out empty ideas and ensure exists is true
-        .map((idea: any) => ({
-          id: idea[0], // id
-          title: idea[1], // title
-          description: idea[2], // description
-          creator: idea[3], // creator
-          totalRaisedETH: idea[4], // totalRaisedETH
-          backerCount: idea[5], // backerCount
-          createdAt: Number(idea[6]) * 1000, // createdAt (convert from seconds to milliseconds)
-        }));
+        .filter((idea: unknown) => {
+          const ideaArray = idea as unknown[];
+          return ideaArray && ideaArray[0] && ideaArray[1] && ideaArray[2] && ideaArray[7];
+        }) // Filter out empty ideas and ensure exists is true
+        .map((idea: unknown) => {
+          const ideaArray = idea as unknown[];
+          return {
+            id: ideaArray[0] as string, // id
+            title: ideaArray[1] as string, // title
+            description: ideaArray[2] as string, // description
+            creator: ideaArray[3] as string, // creator
+            totalRaisedETH: ideaArray[4] as bigint, // totalRaisedETH
+            backerCount: ideaArray[5] as number, // backerCount
+            createdAt: Number(ideaArray[6]) * 1000, // createdAt (convert from seconds to milliseconds)
+          };
+        });
       
       console.log("Transformed ideas:", transformedIdeas);
       setIdeas(transformedIdeas);
@@ -109,7 +111,8 @@ export default function App() {
     });
   }, [loadIdeasFromContract, sendNotification]);
 
-  const handleBackIdea = useCallback((ideaId: string, token: string, amount: bigint) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleBackIdea = useCallback((_ideaId: string, _token: string, _amount: bigint) => {
     // Reload all ideas from blockchain to get the latest data
     loadIdeasFromContract();
   }, [loadIdeasFromContract]);
@@ -236,7 +239,8 @@ export default function App() {
     }
   }, [ideas]);
 
-  const handleWithdrawFunds = useCallback((ideaId: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleWithdrawFunds = useCallback((_ideaId: string) => {
     // Reload all ideas from blockchain to get the latest data
     loadIdeasFromContract();
 

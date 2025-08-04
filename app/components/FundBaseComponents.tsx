@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useState, useCallback, useMemo } from "react";
-import { useAccount, useWalletClient } from "wagmi";
+import { useAccount } from "wagmi";
 import { encodeFunctionData } from "viem";
 import {
   Transaction,
@@ -17,7 +17,7 @@ import {
   TransactionStatus,
 } from "@coinbase/onchainkit/transaction";
 import { useNotification } from "@coinbase/onchainkit/minikit";
-import { Name, Address, Avatar } from "@coinbase/onchainkit/identity";
+import { Address, Avatar } from "@coinbase/onchainkit/identity";
 import { FUNDBASE_ABI, TOKENS } from "@/lib/contract";
 
 // Types
@@ -656,10 +656,9 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
   const [description, setDescription] = useState("");
   const [fundingGoal, setFundingGoal] = useState("");
   const [overfundingMechanism, setOverfundingMechanism] = useState("Burn Excess");
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { address } = useAccount();
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors: { [key: string]: string } = {};
     
     if (!title.trim()) newErrors.title = "Title is required";
@@ -669,9 +668,8 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
     const goal = parseFloat(fundingGoal);
     if (isNaN(goal) || goal <= 0) newErrors.fundingGoal = "Please enter a valid funding goal";
     
-    setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [title, description]);
 
   const handleSubmit = useCallback(() => {
     if (!validateForm() || !address) return;
@@ -691,7 +689,6 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
     setDescription("");
     setFundingGoal("");
     setOverfundingMechanism("Burn Excess");
-    setErrors({});
   }, [title, description, fundingGoal, address, onIdeaPosted]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -880,7 +877,7 @@ export function IdeaCard({ idea, onBack, onViewBackers, onWithdraw }: IdeaCardPr
     });
 
     console.log(`Transaction successful: ${transactionHash}`);
-  }, [backAmount, idea.title, selectedToken, onBack, sendNotification]);
+  }, [backAmount, idea.id, idea.title, selectedToken, onBack, sendNotification]);
 
   const handleTransactionError = useCallback((error: TransactionError) => {
     console.error("Transaction failed:", error);
@@ -905,7 +902,7 @@ export function IdeaCard({ idea, onBack, onViewBackers, onWithdraw }: IdeaCardPr
     });
 
     console.log(`Withdrawal successful: ${transactionHash}`);
-  }, [idea.title, onWithdraw, sendNotification]);
+  }, [idea.id, idea.title, onWithdraw, sendNotification]);
 
   const handleWithdrawError = useCallback((error: TransactionError) => {
     console.error("Withdrawal failed:", error);
@@ -919,22 +916,8 @@ export function IdeaCard({ idea, onBack, onViewBackers, onWithdraw }: IdeaCardPr
     });
   }, [sendNotification]);
 
-  const handleBack = useCallback(() => {
-    if (!backAmount || !address) return;
-    // This function is no longer needed since we're using direct transaction
-  }, [backAmount, address]);
-
   const formatEth = (wei: bigint) => {
     return Number(wei) / 1e18;
-  };
-
-  const getTokenIcon = (token: string) => {
-    switch (token) {
-      case "ETH": return <Icon name="eth" size="sm" />;
-      case "USDC": return <Icon name="usdc" size="sm" />;
-      case "ZORA": return <Icon name="zora" size="sm" />;
-      default: return <Icon name="eth" size="sm" />;
-    }
   };
 
   const formatDate = (timestamp: number) => {
