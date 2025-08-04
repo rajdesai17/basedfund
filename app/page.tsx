@@ -32,16 +32,40 @@ import { getAllIdeas } from "../lib/contract";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
-  const { address } = useAccount();
+  const { address, isConnected, isConnecting } = useAccount();
   const [frameAdded, setFrameAdded] = useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
   const [backers, setBackers] = useState<Backer[]>([]);
   const [showBackersModal, setShowBackersModal] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const [walletReady, setWalletReady] = useState(false);
 
   const addFrame = useAddFrame();
   const sendNotification = useNotification();
+
+  // Ensure client-side rendering to prevent hydration errors
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Handle wallet connection state
+  useEffect(() => {
+    if (isClient && (isConnected || address)) {
+      setWalletReady(true);
+      console.log("✅ Wallet connected:", address);
+    } else if (isClient && !isConnecting) {
+      setWalletReady(false);
+      console.log("❌ Wallet not connected");
+    }
+  }, [isClient, isConnected, address, isConnecting]);
+
+  // Handle adding frame
+  const handleAddFrame = useCallback(async () => {
+    const frameAdded = await addFrame();
+    setFrameAdded(Boolean(frameAdded));
+  }, [addFrame]);
 
   // Load ideas from blockchain
   const loadIdeasFromContract = useCallback(async () => {
@@ -50,10 +74,12 @@ export default function App() {
       
       // Debug: Check if wallet is connected
       console.log("Wallet context:", context);
+      console.log("Wallet address:", address);
+      console.log("Is connected:", isConnected);
       console.log("Contract address:", process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS);
       
       // Check if wallet is connected
-      if (!address) {
+      if (!address && !isConnected) {
         console.log("Wallet not connected, but trying to read contract anyway...");
       }
       
@@ -68,24 +94,54 @@ export default function App() {
         return;
       }
       
-      // Transform contract data to match our Idea type
+      // Transform contract data to match our Idea type with better error handling
       const transformedIdeas: Idea[] = contractIdeas
         .filter((idea: unknown) => {
-          const ideaArray = idea as unknown[];
-          return ideaArray && ideaArray[0] && ideaArray[1] && ideaArray[2] && ideaArray[7];
-        }) // Filter out empty ideas and ensure exists is true
+          try {
+            const ideaArray = idea as unknown[];
+            // More robust validation
+            return ideaArray && 
+                   Array.isArray(ideaArray) && 
+                   ideaArray.length >= 7 &&
+                   typeof ideaArray[0] === 'string' && 
+                   typeof ideaArray[1] === 'string' && 
+                   typeof ideaArray[2] === 'string' &&
+                   typeof ideaArray[3] === 'string' &&
+                   (typeof ideaArray[4] === 'bigint' || typeof ideaArray[4] === 'number') &&
+                   (typeof ideaArray[5] === 'number') &&
+                   (typeof ideaArray[6] === 'number' || typeof ideaArray[6] === 'bigint');
+          } catch (error) {
+            console.warn("Invalid idea data:", idea);
+            return false;
+          }
+        })
         .map((idea: unknown) => {
-          const ideaArray = idea as unknown[];
-          return {
-            id: ideaArray[0] as string, // id
-            title: ideaArray[1] as string, // title
-            description: ideaArray[2] as string, // description
-            creator: ideaArray[3] as string, // creator
-            totalRaisedETH: ideaArray[4] as bigint, // totalRaisedETH
-            backerCount: ideaArray[5] as number, // backerCount
-            createdAt: Number(ideaArray[6]) * 1000, // createdAt (convert from seconds to milliseconds)
-          };
-        });
+          try {
+            const ideaArray = idea as unknown[];
+            return {
+              id: String(ideaArray[0]), // Ensure string
+              title: String(ideaArray[1]), // Ensure string
+              description: String(ideaArray[2]), // Ensure string
+              creator: String(ideaArray[3]), // Ensure string
+              totalRaisedETH: BigInt(typeof ideaArray[4] === 'number' || typeof ideaArray[4] === 'bigint' ? ideaArray[4] : 0), // Ensure BigInt
+              backerCount: Number(typeof ideaArray[5] === 'number' ? ideaArray[5] : 0), // Ensure number
+              createdAt: Number(typeof ideaArray[6] === 'number' || typeof ideaArray[6] === 'bigint' ? ideaArray[6] : 0) * 1000, // Convert from seconds to milliseconds
+            };
+          } catch (error) {
+            console.error("Error transforming idea:", idea, error);
+            // Return a fallback idea to prevent crashes
+            return {
+              id: "error",
+              title: "Error loading idea",
+              description: "This idea could not be loaded properly",
+              creator: "0x0000000000000000000000000000000000000000",
+              totalRaisedETH: BigInt(0),
+              backerCount: 0,
+              createdAt: Date.now(),
+            };
+          }
+        })
+        .filter(idea => idea.id !== "error"); // Remove error ideas
       
       console.log("Transformed ideas:", transformedIdeas);
       setIdeas(transformedIdeas);
@@ -96,170 +152,160 @@ export default function App() {
     } finally {
       setIsLoadingIdeas(false);
     }
-  }, []);
+  }, [address, isConnected]);
 
+  // Set frame ready
   useEffect(() => {
     if (!isFrameReady) {
       setFrameReady();
     }
   }, [setFrameReady, isFrameReady]);
 
-  // Load ideas from blockchain when component mounts
+  // Load ideas on mount and when wallet connects
   useEffect(() => {
-    // Add a small delay to ensure wallet is ready
-    const timer = setTimeout(() => {
-      loadIdeasFromContract();
-    }, 1000);
+    if (isClient) {
+      // Add a small delay to ensure wallet is ready
+      const timer = setTimeout(() => {
+        loadIdeasFromContract();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loadIdeasFromContract, isClient, walletReady]);
+
+  // Handle idea posted
+  const handleIdeaPosted = useCallback((idea: Idea) => {
+    console.log("✅ Idea posted successfully:", idea.id);
     
-    return () => clearTimeout(timer);
-  }, [loadIdeasFromContract]);
-
-  const handleAddFrame = useCallback(async () => {
-    const frameAdded = await addFrame();
-    setFrameAdded(Boolean(frameAdded));
-  }, [addFrame]);
-
-  const handleIdeaPosted = useCallback((newIdea: Idea) => {
-    // Reload all ideas from blockchain to get the latest data
-    loadIdeasFromContract();
+    // Add the new idea to the list immediately
+    setIdeas(prevIdeas => [idea, ...prevIdeas]);
+    
+    // Reload ideas from contract after a short delay to ensure blockchain state is updated
+    setTimeout(() => {
+      loadIdeasFromContract();
+    }, 2000);
+    
+    // Send notification
     sendNotification({
       title: "Idea Posted! 🚀",
-      body: `Your idea "${newIdea.title}" has been posted successfully!`,
+      body: `Your idea "${idea.title}" has been posted successfully!`,
     });
-  }, [loadIdeasFromContract, sendNotification, address]);
+  }, [sendNotification, loadIdeasFromContract]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleBackIdea = useCallback((_ideaId: string, _token: string, _amount: bigint) => {
+  // Handle backing an idea
+  const handleBackIdea = useCallback((ideaId: string, token: string, amount: bigint) => {
+    console.log(`Backing idea ${ideaId} with ${amount} of token ${token}`);
+    
     // Reload all ideas from blockchain to get the latest data
-    loadIdeasFromContract();
-  }, [loadIdeasFromContract]);
+    setTimeout(() => {
+      loadIdeasFromContract();
+    }, 2000);
 
+    sendNotification({
+      title: "Idea Backed! 💰",
+      body: `You've successfully backed an idea with ${Number(amount) / 1e18} ETH!`,
+    });
+  }, [loadIdeasFromContract, sendNotification]);
+
+  // Handle viewing backers
   const handleViewBackers = useCallback((ideaId: string) => {
     const idea = ideas.find(i => i.id === ideaId);
-    if (idea) {
-      setSelectedIdea(idea);
-      
-      // Generate realistic backer data with multiple tokens
-      const backerData: { [key: string]: Backer[] } = {
-        "1": [
-          {
-            wallet: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(2.5 * 1e18),
-            timestamp: Date.now() - 86400000,
-          },
-          {
-            wallet: "0x8ba1f109551bD432803012645Hac136c772c3c",
-            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
-            amount: BigInt(1500 * 1e6),
-            timestamp: Date.now() - 43200000,
-          },
-          {
-            wallet: "0x1234567890123456789012345678901234567890",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(1.8 * 1e18),
-            timestamp: Date.now() - 21600000,
-          },
-          {
-            wallet: "0xabcdef1234567890abcdef1234567890abcdef12",
-            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
-            amount: BigInt(800 * 1e6),
-            timestamp: Date.now() - 10800000,
-          },
-          {
-            wallet: "0x9876543210987654321098765432109876543210",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(3.2 * 1e18),
-            timestamp: Date.now() - 5400000,
-          },
-        ],
-        "2": [
-          {
-            wallet: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(2.1 * 1e18),
-            timestamp: Date.now() - 172800000,
-          },
-          {
-            wallet: "0x8ba1f109551bD432803012645Hac136c772c3c",
-            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
-            amount: BigInt(1200 * 1e6),
-            timestamp: Date.now() - 129600000,
-          },
-          {
-            wallet: "0x1234567890123456789012345678901234567890",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(1.5 * 1e18),
-            timestamp: Date.now() - 86400000,
-          },
-          {
-            wallet: "0xabcdef1234567890abcdef1234567890abcdef12",
-            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
-            amount: BigInt(900 * 1e6),
-            timestamp: Date.now() - 43200000,
-          },
-          {
-            wallet: "0x9876543210987654321098765432109876543210",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(1.2 * 1e18),
-            timestamp: Date.now() - 21600000,
-          },
-          {
-            wallet: "0x5555555555555555555555555555555555555555",
-            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
-            amount: BigInt(600 * 1e6),
-            timestamp: Date.now() - 10800000,
-          },
-          {
-            wallet: "0x6666666666666666666666666666666666666666",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(0.7 * 1e18),
-            timestamp: Date.now() - 5400000,
-          },
-        ],
-        "3": [
-          {
-            wallet: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(4.2 * 1e18),
-            timestamp: Date.now() - 43200000,
-          },
-          {
-            wallet: "0x8ba1f109551bD432803012645Hac136c772c3c",
-            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
-            amount: BigInt(2500 * 1e6),
-            timestamp: Date.now() - 21600000,
-          },
-          {
-            wallet: "0x1234567890123456789012345678901234567890",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(3.8 * 1e18),
-            timestamp: Date.now() - 10800000,
-          },
-          {
-            wallet: "0xabcdef1234567890abcdef1234567890abcdef12",
-            token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
-            amount: BigInt(1800 * 1e6),
-            timestamp: Date.now() - 5400000,
-          },
-          {
-            wallet: "0x9876543210987654321098765432109876543210",
-            token: "0x0000000000000000000000000000000000000000", // ETH
-            amount: BigInt(2.4 * 1e18),
-            timestamp: Date.now() - 2700000,
-          },
-        ],
-      };
-      
-      setBackers(backerData[ideaId] || []);
-      setShowBackersModal(true);
-    }
+    if (!idea) return;
+
+    setSelectedIdea(idea);
+
+    // Mock backer data - in a real app, this would come from the blockchain
+    const backerData: Record<string, Backer[]> = {
+      "1": [
+        {
+          wallet: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+          token: "0x0000000000000000000000000000000000000000", // ETH
+          amount: BigInt(2.5 * 1e18),
+          timestamp: Date.now() - 86400000,
+        },
+        {
+          wallet: "0x8ba1f109551bD432803012645Hac136c772c3c",
+          token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+          amount: BigInt(1500 * 1e6),
+          timestamp: Date.now() - 43200000,
+        },
+        {
+          wallet: "0x1234567890123456789012345678901234567890",
+          token: "0x0000000000000000000000000000000000000000", // ETH
+          amount: BigInt(1.8 * 1e18),
+          timestamp: Date.now() - 21600000,
+        },
+      ],
+      "2": [
+        {
+          wallet: "0xabcdef1234567890abcdef1234567890abcdef12",
+          token: "0x0000000000000000000000000000000000000000", // ETH
+          amount: BigInt(3.2 * 1e18),
+          timestamp: Date.now() - 86400000,
+        },
+        {
+          wallet: "0x9876543210987654321098765432109876543210",
+          token: "0x0000000000000000000000000000000000000000", // ETH
+          amount: BigInt(1.2 * 1e18),
+          timestamp: Date.now() - 21600000,
+        },
+        {
+          wallet: "0x5555555555555555555555555555555555555555",
+          token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+          amount: BigInt(600 * 1e6),
+          timestamp: Date.now() - 10800000,
+        },
+        {
+          wallet: "0x6666666666666666666666666666666666666666",
+          token: "0x0000000000000000000000000000000000000000", // ETH
+          amount: BigInt(0.7 * 1e18),
+          timestamp: Date.now() - 5400000,
+        },
+      ],
+      "3": [
+        {
+          wallet: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+          token: "0x0000000000000000000000000000000000000000", // ETH
+          amount: BigInt(4.2 * 1e18),
+          timestamp: Date.now() - 43200000,
+        },
+        {
+          wallet: "0x8ba1f109551bD432803012645Hac136c772c3c",
+          token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+          amount: BigInt(2500 * 1e6),
+          timestamp: Date.now() - 21600000,
+        },
+        {
+          wallet: "0x1234567890123456789012345678901234567890",
+          token: "0x0000000000000000000000000000000000000000", // ETH
+          amount: BigInt(3.8 * 1e18),
+          timestamp: Date.now() - 10800000,
+        },
+        {
+          wallet: "0xabcdef1234567890abcdef1234567890abcdef12",
+          token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+          amount: BigInt(1800 * 1e6),
+          timestamp: Date.now() - 5400000,
+        },
+        {
+          wallet: "0x9876543210987654321098765432109876543210",
+          token: "0x0000000000000000000000000000000000000000", // ETH
+          amount: BigInt(2.4 * 1e18),
+          timestamp: Date.now() - 2700000,
+        },
+      ],
+    };
+    
+    setBackers(backerData[ideaId] || []);
+    setShowBackersModal(true);
   }, [ideas]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleWithdrawFunds = useCallback((_ideaId: string) => {
     // Reload all ideas from blockchain to get the latest data
-    loadIdeasFromContract();
+    setTimeout(() => {
+      loadIdeasFromContract();
+    }, 2000);
 
     sendNotification({
       title: "Funds Withdrawn! 💰",
@@ -300,6 +346,18 @@ export default function App() {
   const totalFunding = useMemo(() => {
     return ideas.reduce((total, idea) => total + Number(idea.totalRaisedETH) / 1e18, 0);
   }, [ideas]);
+
+  // Don't render until client-side to prevent hydration errors
+  if (!isClient) {
+    return (
+      <div className="h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-white flex flex-col">
