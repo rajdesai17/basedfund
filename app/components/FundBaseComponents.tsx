@@ -19,6 +19,7 @@ import {
 import { useNotification } from "@coinbase/onchainkit/minikit";
 import { Address, Avatar } from "@coinbase/onchainkit/identity";
 import { FUNDBASE_ABI, TOKENS } from "@/lib/contract";
+import { handleRpcError } from "@/lib/wagmi-config";
 
 // Types
 export type Idea = {
@@ -656,6 +657,8 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
   const [description, setDescription] = useState("");
   const [fundingGoal, setFundingGoal] = useState("");
   const [overfundingMechanism, setOverfundingMechanism] = useState("Burn Excess");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { address } = useAccount();
 
   const validateForm = useCallback(() => {
@@ -669,27 +672,40 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
     if (isNaN(goal) || goal <= 0) newErrors.fundingGoal = "Please enter a valid funding goal";
     
     return Object.keys(newErrors).length === 0;
-  }, [title, description]);
+  }, [title, description, fundingGoal]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!validateForm() || !address) return;
 
-    const newIdea: Idea = {
-      id: crypto.randomUUID(),
-      title: title.trim(),
-      description: description.trim(),
-      creator: address,
-      totalRaisedETH: BigInt(0),
-      backerCount: 0,
-      createdAt: Date.now(),
-    };
+    setIsSubmitting(true);
+    setError(null);
 
-    onIdeaPosted(newIdea);
-    setTitle("");
-    setDescription("");
-    setFundingGoal("");
-    setOverfundingMechanism("Burn Excess");
-  }, [title, description, fundingGoal, address, onIdeaPosted]);
+    try {
+      const newIdea: Idea = {
+        id: crypto.randomUUID(),
+        title: title.trim(),
+        description: description.trim(),
+        creator: address,
+        totalRaisedETH: BigInt(0),
+        backerCount: 0,
+        createdAt: Date.now(),
+      };
+
+      onIdeaPosted(newIdea);
+      setTitle("");
+      setDescription("");
+      setFundingGoal("");
+      setOverfundingMechanism("Burn Excess");
+      
+      console.log("✅ Idea posted successfully:", newIdea.title);
+    } catch (error) {
+      console.error("❌ Failed to post idea:", error);
+      handleRpcError(error, "PostIdea");
+      setError("Failed to post idea. Please check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [title, description, address, onIdeaPosted, validateForm]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && e.ctrlKey) {
@@ -723,6 +739,12 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
         <p className="text-sm text-gray-600">Share your startup concept onchain</p>
       </div>
 
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
       <div className="flex-1 space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Project Title</label>
@@ -733,6 +755,7 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             onChange={(e) => setTitle(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             maxLength={100}
+            disabled={isSubmitting}
           />
         </div>
 
@@ -745,6 +768,7 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             placeholder="Describe the problem, solution, and market opportunity..."
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-40"
             maxLength={500}
+            disabled={isSubmitting}
           />
         </div>
 
@@ -758,6 +782,7 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             step="0.1"
             min="0"
+            disabled={isSubmitting}
           />
         </div>
 
@@ -767,6 +792,7 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             value={overfundingMechanism}
             onChange={(e) => setOverfundingMechanism(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            disabled={isSubmitting}
           >
             <option value="Burn Excess">Burn Excess Funds</option>
             <option value="Creator Wallet">Send to Creator Wallet</option>
@@ -776,10 +802,11 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
 
         <Button
           onClick={handleSubmit}
-          disabled={!title.trim() || !description.trim() || !fundingGoal.trim() || Number.parseFloat(fundingGoal) <= 0}
+          disabled={!title.trim() || !description.trim() || !fundingGoal.trim() || Number.parseFloat(fundingGoal) <= 0 || isSubmitting}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          loading={isSubmitting}
         >
-          Post Idea
+          {isSubmitting ? "Posting..." : "Post Idea"}
         </Button>
       </div>
 
@@ -882,6 +909,9 @@ export function IdeaCard({ idea, onBack, onViewBackers, onWithdraw }: IdeaCardPr
   const handleTransactionError = useCallback((error: TransactionError) => {
     console.error("Transaction failed:", error);
     
+    // Use the RPC error handling utility
+    handleRpcError(error, "IdeaCard-BackTransaction");
+    
     // Show user-friendly error message
     const errorMessage = error.message || "Transaction failed. Please try again.";
     sendNotification({
@@ -907,6 +937,9 @@ export function IdeaCard({ idea, onBack, onViewBackers, onWithdraw }: IdeaCardPr
   const handleWithdrawError = useCallback((error: TransactionError) => {
     console.error("Withdrawal failed:", error);
     setShowWithdrawTransaction(false);
+    
+    // Use the RPC error handling utility
+    handleRpcError(error, "IdeaCard-WithdrawTransaction");
     
     // Show user-friendly error message
     const errorMessage = error.message || "Withdrawal failed. Please try again.";

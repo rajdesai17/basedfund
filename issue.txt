@@ -1,0 +1,44 @@
+# current issue
+requestRelay.js:2 
+ POST https://chain-proxy.wallet.coinbase.com/?targetName=base&client-project-nam…3A%2F%2Flocalhost%3A3001&client-project-name=http%3A%2F%2Flocalhost%3A3001 400 (Bad Request)
+makeEthereumJSONRPCRequest	@	requestRelay.js:2
+_handleAsynchronousMethods	@	requestProvider.js:2
+await in _handleAsynchronousMethods		
+(anonymous)	@	requestProvider.js:2
+_sendRequestAsync	@	requestProvider.js:2
+_request	@	requestProvider.js:2
+request	@	requestProvider.js:2
+request	@	requestProvider.js:2
+<Transaction>		
+IdeaCard	@	C:\Users\Raj\basedfu…Components.tsx:1049
+<IdeaCard>		
+eval	@	C:\Users\Raj\basedfu…nd\app\page.tsx:364
+App	@	C:\Users\Raj\basedfu…nd\app\page.tsx:363
+"use server"		
+(app-pages-browser)/./node_modules/next/dist/client/app-index.js	@	main-app.js?v=1754338859265:159
+(app-pages-browser)/./node_modules/next/dist/client/app-next-dev.js	@	main-app.js?v=1754338859265:181
+__webpack_exec__	@	main-app.js?v=1754338859265:1779
+(anonymous)	@	main-app.js?v=1754338859265:1780
+(anonymous)	@	main-app.js?v=1754338859265:9
+
+requestRelay.js:2 
+ POST https://chain-proxy.wallet.coinbase.com/?targetName=base&client-project-nam…3A%2F%2Flocalhost%3A3001&client-project-name=http%3A%2F%2Flocalhost%3A3001 400 (Bad Request)
+makeEthereumJSONRPCRequest	@	requestRelay.js:2
+_handleAsynchronousMethods	@	requestProvider.js:2
+await in _handleAsynchronousMethods		
+(anonymous)	@	requestProvider.js:2
+_sendRequestAsync	@	requestProvider.js:2
+_request	@	requestProvider.js:2
+request	@	requestProvider.js:2
+request	@	requestProvider.js:2
+<Transaction>		
+IdeaCard	@	C:\Users\Raj\basedfu…Components.tsx:1049
+<IdeaCard>		
+eval	@	C:\Users\Raj\basedfu…nd\app\page.tsx:364
+App	@	C:\Users\Raj\basedfu…nd\app\page.tsx:363
+"use server"		
+(app-pages-browser)/./node_modules/next/dist/client/app-index.js	@	main-app.js?v=1754338859265:159
+(app-pages-browser)/./node_modules/next/dist/client/app-next-dev.js	@	main-app.js?v=1754338859265:181
+__webpack_exec__	@	main-app.js?v=1754338859265:1779
+(anonymous)	@	main-app.js?v=1754338859265:1780
+(anonymous)	@	main-app.js?v=1754338859265:9

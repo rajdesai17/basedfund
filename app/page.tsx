@@ -19,6 +19,7 @@ import {
   WalletDropdownDisconnect,
 } from "@coinbase/onchainkit/wallet";
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { useAccount } from "wagmi";
 import { 
   Icon, 
   PostIdea,
@@ -31,6 +32,7 @@ import { getAllIdeas } from "../lib/contract";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
+  const { address } = useAccount();
   const [frameAdded, setFrameAdded] = useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
@@ -51,7 +53,7 @@ export default function App() {
       console.log("Contract address:", process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS);
       
       // Check if wallet is connected
-      if (!context?.client?.account) {
+      if (!address) {
         console.log("Wallet not connected, but trying to read contract anyway...");
       }
       
@@ -124,7 +126,7 @@ export default function App() {
       title: "Idea Posted! 🚀",
       body: `Your idea "${newIdea.title}" has been posted successfully!`,
     });
-  }, [loadIdeasFromContract, sendNotification]);
+  }, [loadIdeasFromContract, sendNotification, address]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleBackIdea = useCallback((_ideaId: string, _token: string, _amount: bigint) => {
