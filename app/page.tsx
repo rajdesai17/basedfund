@@ -50,16 +50,27 @@ export default function App() {
     setIsClient(true);
   }, []);
 
-  // Handle wallet connection state
+  // Handle wallet connection state with proper error handling
   useEffect(() => {
     if (isClient && (isConnected || address)) {
       setWalletReady(true);
       console.log("✅ Wallet connected:", address);
+      console.log("✅ Wallet ready for blockchain operations");
     } else if (isClient && !isConnecting) {
       setWalletReady(false);
-      console.log("❌ Wallet not connected");
+      console.log("❌ Wallet not connected - blockchain operations will fail");
     }
   }, [isClient, isConnected, address, isConnecting]);
+
+  // Enhanced wallet connection validation
+  const validateWalletConnection = useCallback(() => {
+    if (!isConnected || !address) {
+      console.warn("⚠️ Wallet not connected - cannot perform blockchain operations");
+      return false;
+    }
+    console.log("✅ Wallet connection validated for blockchain operations");
+    return true;
+  }, [isConnected, address]);
 
   // Handle adding frame
   const handleAddFrame = useCallback(async () => {
@@ -67,21 +78,23 @@ export default function App() {
     setFrameAdded(Boolean(frameAdded));
   }, [addFrame]);
 
-  // Load ideas from blockchain
+  // Load ideas from blockchain with proper wallet validation
   const loadIdeasFromContract = useCallback(async () => {
     try {
       setIsLoadingIdeas(true);
+      
+      // Validate wallet connection before blockchain operations
+      if (!validateWalletConnection()) {
+        console.log("⏳ Waiting for wallet connection...");
+        setIdeas([]);
+        return;
+      }
       
       // Debug: Check if wallet is connected
       console.log("Wallet context:", context);
       console.log("Wallet address:", address);
       console.log("Is connected:", isConnected);
       console.log("Contract address:", process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS);
-      
-      // Check if wallet is connected
-      if (!address && !isConnected) {
-        console.log("Wallet not connected, but trying to read contract anyway...");
-      }
       
       const contractIdeas = await getAllIdeas();
       
@@ -152,7 +165,7 @@ export default function App() {
     } finally {
       setIsLoadingIdeas(false);
     }
-  }, [address, isConnected]);
+  }, [address, isConnected, validateWalletConnection]);
 
   // Set frame ready
   useEffect(() => {

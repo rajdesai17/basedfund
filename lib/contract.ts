@@ -1,60 +1,196 @@
-import { createPublicClient, http, parseAbi, type WalletClient } from 'viem';
-import { base } from 'viem/chains';
+import { createPublicClient, http, type WalletClient } from "viem";
+import { base } from "wagmi/chains";
+import { handleRpcError } from "./wagmi-config";
 
-// FundBase Contract ABI
-export const FUNDBASE_ABI = parseAbi([
-  'function postIdea(string id, string title, string description) external',
-  'function backIdeaWithETH(string id) external payable',
-  'function backIdeaWithToken(string id, address token, uint256 amount) external',
-  'function withdrawFunds(string id) external',
-  'function getIdea(string id) external view returns (string, string, string, address, uint256, uint256, uint256, bool)',
-  'function getBackers(string id) external view returns ((address, address, uint256, uint256)[])',
-  'function getAllIdeas() external view returns ((string, string, string, address, uint256, uint256, uint256, bool)[])',
-  'function getIdeaCount() external view returns (uint256)',
-  'function hasUserBacked(string id, address user) external view returns (bool)',
-  'function getTokenBalance(string id, address token) external view returns (uint256)',
-  'function getAllTokenBalances(string id) external view returns ((address, uint256)[])',
-  'event IdeaPosted(string indexed id, string title, address creator)',
-  'event IdeaBacked(string indexed id, address backer, address token, uint256 amount)',
-  'event FundsWithdrawn(string indexed id, address creator, address token, uint256 amount)',
-]);
+// FundBase contract ABI
+export const FUNDBASE_ABI = [
+  {
+    inputs: [
+      { name: "id", type: "string" },
+      { name: "title", type: "string" },
+      { name: "description", type: "string" },
+    ],
+    name: "postIdea",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "id", type: "string" }],
+    name: "backIdeaWithETH",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "id", type: "string" },
+      { name: "token", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "backIdeaWithToken",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "id", type: "string" }],
+    name: "withdrawFunds",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "id", type: "string" }],
+    name: "getIdea",
+    outputs: [
+      { name: "id", type: "string" },
+      { name: "title", type: "string" },
+      { name: "description", type: "string" },
+      { name: "creator", type: "address" },
+      { name: "totalRaisedETH", type: "uint256" },
+      { name: "backerCount", type: "uint256" },
+      { name: "createdAt", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "id", type: "string" }],
+    name: "getBackers",
+    outputs: [
+      {
+        components: [
+          { name: "backer", type: "address" },
+          { name: "token", type: "address" },
+          { name: "amount", type: "uint256" },
+          { name: "timestamp", type: "uint256" },
+        ],
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getAllIdeas",
+    outputs: [
+      {
+        components: [
+          { name: "id", type: "string" },
+          { name: "title", type: "string" },
+          { name: "description", type: "string" },
+          { name: "creator", type: "address" },
+          { name: "totalRaisedETH", type: "uint256" },
+          { name: "backerCount", type: "uint256" },
+          { name: "createdAt", type: "uint256" },
+        ],
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "id", type: "string" }],
+    name: "getIdeaCount",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "id", type: "string" },
+      { name: "user", type: "address" },
+    ],
+    name: "hasUserBacked",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "id", type: "string" },
+      { name: "token", type: "address" },
+    ],
+    name: "getTokenBalance",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "id", type: "string" }],
+    name: "getAllTokenBalances",
+    outputs: [
+      {
+        components: [
+          { name: "token", type: "address" },
+          { name: "amount", type: "uint256" },
+        ],
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
-// Token addresses on Base
+// Token addresses
 export const TOKENS = {
-  ETH: '0x0000000000000000000000000000000000000000',
-  USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-  ZORA: '0x0000000000000000000000000000000000000000', // Replace with actual ZORA address
+  ETH: "0x0000000000000000000000000000000000000000",
+  USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  ZORA: "0x0000000000000000000000000000000000000000",
 } as const;
 
-// Contract address (will be set after deployment)
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS as `0x${string}`;
-
-// Create public client for Base Mainnet
-export const publicClient = createPublicClient({
+// Create public client with proper error handling
+const publicClient = createPublicClient({
   chain: base,
   transport: http(),
 });
 
-// Contract interaction functions
+// Helper function to get contract address with validation
+function getContractAddress(): `0x${string}` {
+  const contractAddress = process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS;
+  if (!contractAddress) {
+    throw new Error("Contract address not configured");
+  }
+  return contractAddress as `0x${string}`;
+}
+
+// Enhanced contract interaction with proper validation
 export async function postIdea(
   id: string,
   title: string,
   description: string,
   walletClient: WalletClient
 ) {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
+  try {
+    // Validate input parameters
+    if (!id || !title || !description) {
+      throw new Error("Missing required parameters: id, title, description");
+    }
+
+    console.log("📝 Posting idea with validated parameters:", { id, title, description });
+
+    const { request } = await publicClient.simulateContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "postIdea",
+      args: [id, title, description],
+      account: walletClient.account,
+    });
+
+    const hash = await walletClient.writeContract(request);
+    console.log("✅ Idea posted successfully:", hash);
+    return hash;
+  } catch (error) {
+    handleRpcError(error, "postIdea");
+    throw error;
   }
-
-  const { request } = await publicClient.simulateContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'postIdea',
-    args: [id, title, description],
-    account: walletClient.account,
-  });
-
-  return walletClient.writeContract(request);
 }
 
 export async function backIdeaWithETH(
@@ -62,20 +198,30 @@ export async function backIdeaWithETH(
   amount: bigint,
   walletClient: WalletClient
 ) {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
+  try {
+    // Validate input parameters
+    if (!id || amount <= 0n) {
+      throw new Error("Missing required parameters: id, amount");
+    }
+
+    console.log("💰 Backing idea with ETH:", { id, amount });
+
+    const { request } = await publicClient.simulateContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "backIdeaWithETH",
+      args: [id],
+      value: amount,
+      account: walletClient.account,
+    });
+
+    const hash = await walletClient.writeContract(request);
+    console.log("✅ Idea backed successfully:", hash);
+    return hash;
+  } catch (error) {
+    handleRpcError(error, "backIdeaWithETH");
+    throw error;
   }
-
-  const { request } = await publicClient.simulateContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'backIdeaWithETH',
-    args: [id],
-    value: amount,
-    account: walletClient.account,
-  });
-
-  return walletClient.writeContract(request);
 }
 
 export async function backIdeaWithToken(
@@ -84,113 +230,159 @@ export async function backIdeaWithToken(
   amount: bigint,
   walletClient: WalletClient
 ) {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
+  try {
+    // Validate input parameters
+    if (!id || !token || amount <= 0n) {
+      throw new Error("Missing required parameters: id, token, amount");
+    }
+
+    console.log("💰 Backing idea with token:", { id, token, amount });
+
+    const { request } = await publicClient.simulateContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "backIdeaWithToken",
+      args: [id, token, amount],
+      account: walletClient.account,
+    });
+
+    const hash = await walletClient.writeContract(request);
+    console.log("✅ Idea backed with token successfully:", hash);
+    return hash;
+  } catch (error) {
+    handleRpcError(error, "backIdeaWithToken");
+    throw error;
   }
-
-  const { request } = await publicClient.simulateContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'backIdeaWithToken',
-    args: [id, token, amount],
-    account: walletClient.account,
-  });
-
-  return walletClient.writeContract(request);
 }
 
 export async function withdrawFunds(
   id: string,
   walletClient: WalletClient
 ) {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
+  try {
+    // Validate input parameters
+    if (!id) {
+      throw new Error("Missing required parameter: id");
+    }
+
+    console.log("💸 Withdrawing funds for idea:", { id });
+
+    const { request } = await publicClient.simulateContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "withdrawFunds",
+      args: [id],
+      account: walletClient.account,
+    });
+
+    const hash = await walletClient.writeContract(request);
+    console.log("✅ Funds withdrawn successfully:", hash);
+    return hash;
+  } catch (error) {
+    handleRpcError(error, "withdrawFunds");
+    throw error;
   }
-
-  const { request } = await publicClient.simulateContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'withdrawFunds',
-    args: [id],
-    account: walletClient.account,
-  });
-
-  return walletClient.writeContract(request);
 }
 
 export async function getIdea(id: string) {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
-  }
+  try {
+    if (!id) {
+      throw new Error("Missing required parameter: id");
+    }
 
-  return publicClient.readContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'getIdea',
-    args: [id],
-  });
+    return await publicClient.readContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "getIdea",
+      args: [id],
+    });
+  } catch (error) {
+    handleRpcError(error, "getIdea");
+    throw error;
+  }
 }
 
 export async function getBackers(id: string) {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
-  }
+  try {
+    if (!id) {
+      throw new Error("Missing required parameter: id");
+    }
 
-  return publicClient.readContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'getBackers',
-    args: [id],
-  });
+    return await publicClient.readContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "getBackers",
+      args: [id],
+    });
+  } catch (error) {
+    handleRpcError(error, "getBackers");
+    throw error;
+  }
 }
 
 export async function getAllIdeas() {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
+  try {
+    return await publicClient.readContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "getAllIdeas",
+    });
+  } catch (error) {
+    handleRpcError(error, "getAllIdeas");
+    throw error;
   }
-
-  return publicClient.readContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'getAllIdeas',
-  });
 }
 
 export async function hasUserBacked(id: string, user: `0x${string}`) {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
-  }
+  try {
+    if (!id || !user) {
+      throw new Error("Missing required parameters: id, user");
+    }
 
-  return publicClient.readContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'hasUserBacked',
-    args: [id, user],
-  });
+    return await publicClient.readContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "hasUserBacked",
+      args: [id, user],
+    });
+  } catch (error) {
+    handleRpcError(error, "hasUserBacked");
+    throw error;
+  }
 }
 
 export async function getTokenBalance(id: string, token: `0x${string}`) {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
-  }
+  try {
+    if (!id || !token) {
+      throw new Error("Missing required parameters: id, token");
+    }
 
-  return publicClient.readContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'getTokenBalance',
-    args: [id, token],
-  });
+    return await publicClient.readContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "getTokenBalance",
+      args: [id, token],
+    });
+  } catch (error) {
+    handleRpcError(error, "getTokenBalance");
+    throw error;
+  }
 }
 
 export async function getAllTokenBalances(id: string) {
-  if (!CONTRACT_ADDRESS) {
-    throw new Error('Contract address not configured');
-  }
+  try {
+    if (!id) {
+      throw new Error("Missing required parameter: id");
+    }
 
-  return publicClient.readContract({
-    address: CONTRACT_ADDRESS,
-    abi: FUNDBASE_ABI,
-    functionName: 'getAllTokenBalances',
-    args: [id],
-  });
+    return await publicClient.readContract({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "getAllTokenBalances",
+      args: [id],
+    });
+  } catch (error) {
+    handleRpcError(error, "getAllTokenBalances");
+    throw error;
+  }
 } 

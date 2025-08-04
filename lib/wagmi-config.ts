@@ -45,9 +45,11 @@ export function createWagmiConfig(chain = base) {
     chains: [chain],
     connectors: [
       coinbaseWallet({
-        // Removed appName to prevent duplicate client-project-name parameter
-        // MiniKitProvider handles the project name configuration
+        // Completely removed appName to prevent any duplicate client-project-name parameter
+        // The project name is handled by MiniKitProvider only
         appLogoUrl: iconUrl,
+        // Force Base chain to prevent Ethereum mainnet connection
+        chainId: chain.id,
       }),
     ],
     transports: {
@@ -57,11 +59,25 @@ export function createWagmiConfig(chain = base) {
   });
 }
 
-// Error handling utility
+// Enhanced error handling utility based on Coinbase documentation
 export function handleRpcError(error: unknown, context: string) {
   console.error(`RPC Error in ${context}:`, error);
   
   const errorMessage = error instanceof Error ? error.message : String(error);
+  
+  // Check for 400 Bad Request errors (per Coinbase docs)
+  if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
+    console.warn(`⚠️ 400 Bad Request detected in ${context}. This indicates:`);
+    console.warn('   • Invalid request parameters');
+    console.warn('   • Missing required parameters');
+    console.warn('   • Malformed request data');
+    console.warn('   • Authentication issues');
+    console.warn('💡 Solutions:');
+    console.warn('   • Check wallet connection status');
+    console.warn('   • Verify request format');
+    console.warn('   • Ensure proper authentication');
+    console.warn('   • Clear browser cache and retry');
+  }
   
   // Check if it's a 401/400 error
   if (errorMessage.includes('401') || errorMessage.includes('400')) {
@@ -77,6 +93,11 @@ export function handleRpcError(error: unknown, context: string) {
   // Check if it's a timeout error
   if (errorMessage.includes('timeout')) {
     console.warn(`Timeout error detected in ${context}. RPC endpoint may be slow.`);
+  }
+
+  // Check for wallet connection errors
+  if (errorMessage.includes('wallet') || errorMessage.includes('connection')) {
+    console.warn(`Wallet connection error detected in ${context}. Ensure wallet is properly connected.`);
   }
 }
 

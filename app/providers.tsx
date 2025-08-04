@@ -79,6 +79,7 @@ export function Providers(props: { children: ReactNode }) {
             appearance: {
               mode: "auto",
               theme: "mini-app-theme",
+              // Completely removed name property to prevent duplicate client-project-name
               logo: iconUrl,
             },
           }}
