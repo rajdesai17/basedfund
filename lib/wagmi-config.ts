@@ -45,7 +45,8 @@ export function createWagmiConfig(chain = base) {
     chains: [chain],
     connectors: [
       coinbaseWallet({
-        appName: projectName,
+        // Removed appName to prevent duplicate client-project-name parameter
+        // MiniKitProvider handles the project name configuration
         appLogoUrl: iconUrl,
       }),
     ],
