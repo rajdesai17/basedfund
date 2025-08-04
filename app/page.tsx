@@ -164,10 +164,10 @@ export default function App() {
               // Handle array format (legacy)
               const ideaArray = idea as unknown[];
               const transformed = {
-                id: String(ideaArray[0]),
-                title: String(ideaArray[1]),
-                description: String(ideaArray[2]),
-                creator: String(ideaArray[3]),
+                id: String(ideaArray[0] || ''),
+                title: String(ideaArray[1] || ''),
+                description: String(ideaArray[2] || ''),
+                creator: String(ideaArray[3] || ''),
                 totalRaisedETH: BigInt(typeof ideaArray[4] === 'number' || typeof ideaArray[4] === 'bigint' ? ideaArray[4] : 0),
                 backerCount: Number(typeof ideaArray[5] === 'number' ? ideaArray[5] : 0),
                 createdAt: Number(typeof ideaArray[6] === 'number' || typeof ideaArray[6] === 'bigint' ? ideaArray[6] : 0) * 1000,
@@ -179,10 +179,10 @@ export default function App() {
               // Handle object format (named tuple from Viem)
               const ideaObj = idea as Record<string, unknown>;
               const transformed = {
-                id: String(ideaObj.id),
-                title: String(ideaObj.title),
-                description: String(ideaObj.description),
-                creator: String(ideaObj.creator),
+                id: String(ideaObj.id || ''),
+                title: String(ideaObj.title || ''),
+                description: String(ideaObj.description || ''),
+                creator: String(ideaObj.creator || ''),
                 totalRaisedETH: BigInt(typeof ideaObj.totalRaisedETH === 'bigint' || typeof ideaObj.totalRaisedETH === 'number' ? ideaObj.totalRaisedETH : 0n),
                 backerCount: Number(ideaObj.backerCount || 0),
                 createdAt: Number(ideaObj.createdAt || 0) * 1000, // Convert from seconds to milliseconds
@@ -205,14 +205,32 @@ export default function App() {
             };
           }
         })
-        .filter(idea => idea.id !== "error"); // Remove error ideas
+        .filter(idea => idea.id !== "error" && idea.id !== ""); // Remove error ideas and empty IDs
       
       console.log("Transformed ideas:", transformedIdeas);
-      setIdeas(transformedIdeas);
+      
+      // Merge with existing ideas to ensure we don't lose locally posted ideas
+      setIdeas(prevIdeas => {
+        const blockchainIdeas = new Map(transformedIdeas.map(idea => [idea.id, idea]));
+        const localIdeas = new Map(prevIdeas.map(idea => [idea.id, idea]));
+        
+        // Merge blockchain and local ideas, preferring blockchain data for existing ideas
+        const mergedIdeas = new Map([...localIdeas, ...blockchainIdeas]);
+        
+        const result = Array.from(mergedIdeas.values()).sort((a, b) => 
+          b.createdAt - a.createdAt // Sort by newest first
+        );
+        
+        console.log("Merged ideas count:", result.length);
+        console.log("Blockchain ideas:", transformedIdeas.length);
+        console.log("Local ideas:", prevIdeas.length);
+        
+        return result;
+      });
     } catch (error) {
       console.error("Failed to load ideas from contract:", error);
-      // Keep empty array if loading fails
-      setIdeas([]);
+      // Keep existing ideas if loading fails, don't clear the array
+      console.log("Keeping existing ideas due to blockchain loading error");
     } finally {
       setIsLoadingIdeas(false);
     }
@@ -236,6 +254,18 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [loadIdeasFromContract, isClient, walletReady]);
+
+  // Periodic refresh of ideas from blockchain
+  useEffect(() => {
+    if (!isConnected || !address) return;
+    
+    const interval = setInterval(() => {
+      console.log("🔄 Periodic refresh of ideas from blockchain...");
+      loadIdeasFromContract();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [isConnected, address, loadIdeasFromContract]);
 
   // Handle idea posted
   const handleIdeaPosted = useCallback((idea: Idea) => {
