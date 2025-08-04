@@ -657,59 +657,76 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
   const [description, setDescription] = useState("");
   const [fundingGoal, setFundingGoal] = useState("");
   const [overfundingMechanism, setOverfundingMechanism] = useState("Burn Excess");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { address } = useAccount();
+  const sendNotification = useNotification();
 
   const validateForm = useCallback(() => {
     const newErrors: { [key: string]: string } = {};
     
     if (!title.trim()) newErrors.title = "Title is required";
     if (!description.trim()) newErrors.description = "Description is required";
-    if (!fundingGoal.trim()) newErrors.fundingGoal = "Funding goal is required";
-    
-    const goal = parseFloat(fundingGoal);
-    if (isNaN(goal) || goal <= 0) newErrors.fundingGoal = "Please enter a valid funding goal";
     
     return Object.keys(newErrors).length === 0;
-  }, [title, description, fundingGoal]);
+  }, [title, description]);
 
-  const handleSubmit = useCallback(async () => {
-    if (!validateForm() || !address) return;
+  // Create the transaction calls for posting an idea
+  const calls = useMemo(() => {
+    if (!address || !validateForm()) return [];
 
-    setIsSubmitting(true);
-    setError(null);
+    const ideaId = crypto.randomUUID();
 
-    try {
-      const newIdea: Idea = {
-        id: crypto.randomUUID(),
-        title: title.trim(),
-        description: description.trim(),
-        creator: address,
-        totalRaisedETH: BigInt(0),
-        backerCount: 0,
-        createdAt: Date.now(),
-      };
+    return [
+      {
+        address: "0x0CFB5CC7bf2019e8a0370933aafCF6fB55028411" as `0x${string}`,
+        abi: FUNDBASE_ABI,
+        functionName: "postIdea",
+        args: [ideaId, title.trim(), description.trim()],
+      },
+    ];
+  }, [address, title, description, validateForm]);
 
-      onIdeaPosted(newIdea);
-      setTitle("");
-      setDescription("");
-      setFundingGoal("");
-      setOverfundingMechanism("Burn Excess");
-      
-      console.log("✅ Idea posted successfully:", newIdea.title);
-    } catch (error) {
-      console.error("❌ Failed to post idea:", error);
-      handleRpcError(error, "PostIdea");
-      setError("Failed to post idea. Please check your connection and try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [title, description, address, onIdeaPosted, validateForm]);
+  const handleTransactionSuccess = useCallback((response: TransactionResponse) => {
+    const transactionHash = response.transactionReceipts[0].transactionHash;
+    const newIdea: Idea = {
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      description: description.trim(),
+      creator: address!,
+      totalRaisedETH: BigInt(0),
+      backerCount: 0,
+      createdAt: Date.now(),
+    };
+
+    onIdeaPosted(newIdea);
+    setTitle("");
+    setDescription("");
+    setFundingGoal("");
+    setOverfundingMechanism("Burn Excess");
+    
+    sendNotification({
+      title: "Idea Posted! 🚀",
+      body: `Your idea "${newIdea.title}" has been posted to the blockchain!`,
+    });
+    
+    console.log("✅ Idea posted successfully to blockchain:", newIdea.title);
+    console.log("Transaction hash:", transactionHash);
+  }, [title, description, address, onIdeaPosted, sendNotification]);
+
+  const handleTransactionError = useCallback((error: TransactionError) => {
+    console.error("❌ Failed to post idea to blockchain:", error);
+    handleRpcError(error, "PostIdea");
+    setError("Failed to post idea to blockchain. Please check your connection and try again.");
+    
+    sendNotification({
+      title: "Transaction Failed ❌",
+      body: "Failed to post idea to blockchain. Please try again.",
+    });
+  }, [sendNotification]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && e.ctrlKey) {
-      handleSubmit();
+      // TransactionButton handles the submission
     }
   };
 
@@ -755,7 +772,7 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             onChange={(e) => setTitle(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             maxLength={100}
-            disabled={isSubmitting}
+            disabled={false}
           />
         </div>
 
@@ -768,7 +785,7 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             placeholder="Describe the problem, solution, and market opportunity..."
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-40"
             maxLength={500}
-            disabled={isSubmitting}
+            disabled={false}
           />
         </div>
 
@@ -782,8 +799,9 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             step="0.1"
             min="0"
-            disabled={isSubmitting}
+            disabled={false}
           />
+          <p className="text-xs text-gray-500 mt-1">Note: Funding goals are not stored on-chain in the current contract version</p>
         </div>
 
         <div>
@@ -792,7 +810,7 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             value={overfundingMechanism}
             onChange={(e) => setOverfundingMechanism(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            disabled={isSubmitting}
+            disabled={false}
           >
             <option value="Burn Excess">Burn Excess Funds</option>
             <option value="Creator Wallet">Send to Creator Wallet</option>
@@ -800,14 +818,25 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
           </select>
         </div>
 
-        <Button
-          onClick={handleSubmit}
-          disabled={!title.trim() || !description.trim() || !fundingGoal.trim() || Number.parseFloat(fundingGoal) <= 0 || isSubmitting}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-          loading={isSubmitting}
+        <Transaction
+          calls={calls}
+          onSuccess={handleTransactionSuccess}
+          onError={handleTransactionError}
         >
-          {isSubmitting ? "Posting..." : "Post Idea"}
-        </Button>
+          <TransactionButton 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!title.trim() || !description.trim()}
+          />
+          <TransactionStatus>
+            <TransactionStatusAction />
+            <TransactionStatusLabel />
+          </TransactionStatus>
+          <TransactionToast className="mb-4">
+            <TransactionToastIcon />
+            <TransactionToastLabel />
+            <TransactionToastAction />
+          </TransactionToast>
+        </Transaction>
       </div>
 
       <div className="mt-6 pt-6 border-t border-gray-200">
