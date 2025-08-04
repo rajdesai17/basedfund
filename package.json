@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy:contract": "hardhat run scripts/deploy-contract.js --network baseSepolia",
-    "deploy:contract:mainnet": "hardhat run scripts/deploy-contract.js --network base"
+    "deploy:contract": "hardhat run scripts/deploy-contract.js --network base",
+    "deploy:contract:mainnet": "hardhat run scripts/deploy-contract.js --network base",
+    "deploy:contract:testnet": "hardhat run scripts/deploy-contract.js --network baseSepolia"
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.17",

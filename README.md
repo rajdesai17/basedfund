@@ -68,14 +68,14 @@ NEYNAR_API_KEY=your_neynar_api_key
 
 ### 3. Deploy Smart Contract
 
-#### Testnet (Base Sepolia)
+#### Mainnet (Base) - Default
 ```bash
 npm run deploy:contract
 ```
 
-#### Mainnet (Base)
+#### Testnet (Base Sepolia)
 ```bash
-npm run deploy:contract:mainnet
+npm run deploy:contract:testnet
 ```
 
 ### 4. Update Contract Address

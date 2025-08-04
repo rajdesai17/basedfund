@@ -45,6 +45,16 @@ export default function App() {
   const loadIdeasFromContract = useCallback(async () => {
     try {
       setIsLoadingIdeas(true);
+      
+      // Debug: Check if wallet is connected
+      console.log("Wallet context:", context);
+      console.log("Contract address:", process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS);
+      
+      // Check if wallet is connected
+      if (!context?.client?.account) {
+        console.log("Wallet not connected, but trying to read contract anyway...");
+      }
+      
       const contractIdeas = await getAllIdeas();
       
       console.log("Contract ideas result:", contractIdeas);
@@ -94,7 +104,12 @@ export default function App() {
 
   // Load ideas from blockchain when component mounts
   useEffect(() => {
-    loadIdeasFromContract();
+    // Add a small delay to ensure wallet is ready
+    const timer = setTimeout(() => {
+      loadIdeasFromContract();
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, [loadIdeasFromContract]);
 
   const handleAddFrame = useCallback(async () => {

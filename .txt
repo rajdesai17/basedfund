@@ -1,0 +1,3 @@
+
+# FundBase Cont ration
+RESS=0x0CFB5CC7bf2019e8a0370933aafCF6fB55028411
