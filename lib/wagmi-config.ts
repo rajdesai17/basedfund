@@ -4,7 +4,6 @@ import { coinbaseWallet } from "wagmi/connectors";
 
 export function createWagmiConfig(chain = base) {
   const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY;
-  const projectName = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'FundBase';
   const iconUrl = process.env.NEXT_PUBLIC_ICON_URL;
 
   // Enhanced RPC URLs with better fallbacks and gas estimation support

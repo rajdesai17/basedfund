@@ -163,8 +163,14 @@ function getContractAddress(): `0x${string}` {
 
 // Enhanced gas estimation with fallback
 async function estimateGasWithFallback(
-  simulationRequest: any,
-  walletClient: WalletClient
+  simulationRequest: {
+    address: `0x${string}`;
+    abi: typeof FUNDBASE_ABI;
+    functionName: string;
+    args: unknown[];
+    account?: `0x${string}`;
+    value?: bigint;
+  }
 ): Promise<bigint> {
   try {
     // Try to get current gas prices for better estimation
@@ -179,7 +185,7 @@ async function estimateGasWithFallback(
     }
 
     // First attempt: standard simulation
-    const { request } = await publicClient.simulateContract(simulationRequest);
+    const { request } = await publicClient.simulateContract(simulationRequest as unknown as Parameters<typeof publicClient.simulateContract>[0]);
     return request.gas || BigInt(300000); // Default gas limit if estimation fails
   } catch (error) {
     console.warn("⚠️ Gas estimation failed, using fallback:", error);
@@ -204,23 +210,28 @@ export async function postIdea(
       throw new Error("Missing required parameters: id, title, description");
     }
 
+    // Validate wallet account
+    if (!walletClient.account) {
+      throw new Error("Wallet account is undefined");
+    }
+
     console.log("📝 Posting idea with validated parameters:", { id, title, description });
 
     // Enhanced gas estimation
     const gas = await estimateGasWithFallback({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
-      functionName: "postIdea",
+      functionName: 'postIdea',
       args: [id, title, description],
-      account: walletClient.account,
-    }, walletClient);
+      account: walletClient.account.address,
+    });
 
     const { request } = await publicClient.simulateContract({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
       functionName: "postIdea",
       args: [id, title, description],
-      account: walletClient.account,
+      account: walletClient.account.address,
       gas, // Use estimated gas
     });
 
@@ -244,17 +255,22 @@ export async function backIdeaWithETH(
       throw new Error("Missing required parameters: id, amount");
     }
 
+    // Validate wallet account
+    if (!walletClient.account) {
+      throw new Error("Wallet account is undefined");
+    }
+
     console.log("💰 Backing idea with ETH:", { id, amount });
 
     // Enhanced gas estimation for payable function
     const gas = await estimateGasWithFallback({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
-      functionName: "backIdeaWithETH",
+      functionName: 'backIdeaWithETH',
       args: [id],
+      account: walletClient.account.address,
       value: amount,
-      account: walletClient.account,
-    }, walletClient);
+    });
 
     const { request } = await publicClient.simulateContract({
       address: getContractAddress(),
@@ -262,7 +278,7 @@ export async function backIdeaWithETH(
       functionName: "backIdeaWithETH",
       args: [id],
       value: amount,
-      account: walletClient.account,
+      account: walletClient.account.address,
       gas, // Use estimated gas
     });
 
@@ -287,23 +303,28 @@ export async function backIdeaWithToken(
       throw new Error("Missing required parameters: id, token, amount");
     }
 
+    // Validate wallet account
+    if (!walletClient.account) {
+      throw new Error("Wallet account is undefined");
+    }
+
     console.log("💰 Backing idea with token:", { id, token, amount });
 
     // Enhanced gas estimation
     const gas = await estimateGasWithFallback({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
-      functionName: "backIdeaWithToken",
+      functionName: 'backIdeaWithToken',
       args: [id, token, amount],
-      account: walletClient.account,
-    }, walletClient);
+      account: walletClient.account.address,
+    });
 
     const { request } = await publicClient.simulateContract({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
       functionName: "backIdeaWithToken",
       args: [id, token, amount],
-      account: walletClient.account,
+      account: walletClient.account.address,
       gas, // Use estimated gas
     });
 
@@ -326,23 +347,28 @@ export async function withdrawFunds(
       throw new Error("Missing required parameter: id");
     }
 
+    // Validate wallet account
+    if (!walletClient.account) {
+      throw new Error("Wallet account is undefined");
+    }
+
     console.log("💸 Withdrawing funds for idea:", { id });
 
     // Enhanced gas estimation
     const gas = await estimateGasWithFallback({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
-      functionName: "withdrawFunds",
+      functionName: 'withdrawFunds',
       args: [id],
-      account: walletClient.account,
-    }, walletClient);
+      account: walletClient.account.address,
+    });
 
     const { request } = await publicClient.simulateContract({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
       functionName: "withdrawFunds",
       args: [id],
-      account: walletClient.account,
+      account: walletClient.account.address,
       gas, // Use estimated gas
     });
 

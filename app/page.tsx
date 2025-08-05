@@ -234,7 +234,7 @@ export default function App() {
     } finally {
       setIsLoadingIdeas(false);
     }
-  }, [address, isConnected, validateWalletConnection]);
+  }, [address, isConnected, validateWalletConnection, context]);
 
   // Set frame ready
   useEffect(() => {
