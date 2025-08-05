@@ -1,6 +1,7 @@
 import { createConfig, http } from "wagmi";
 import { base } from "wagmi/chains";
 import { coinbaseWallet } from "wagmi/connectors";
+import { createPublicClient } from "viem";
 
 export function createWagmiConfig(chain = base) {
   const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY;
@@ -206,29 +207,21 @@ export async function getCurrentGasPrices(): Promise<{
   maxPriorityFeePerGas: bigint;
 } | null> {
   try {
-    const response = await fetch('https://mainnet.base.org', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_getBlockByNumber',
-        params: ['latest', false],
-        id: 1,
-      }),
+    const publicClient = createPublicClient({
+      chain: base,
+      transport: http(),
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    const block = await publicClient.getBlock({ blockTag: 'latest' });
+    
+    if (!block.baseFeePerGas) {
+      console.warn("⚠️ Base fee not available in block");
+      return null;
     }
 
-    const data = await response.json();
-    const baseFee = BigInt(data.result.baseFeePerGas || '0');
-    
-    // Calculate reasonable fee estimates
-    const maxPriorityFeePerGas = BigInt(1000000000); // 1 gwei
-    const maxFeePerGas = baseFee * BigInt(2) + maxPriorityFeePerGas; // 2x base fee + priority fee
+    const baseFee = block.baseFeePerGas;
+    const maxPriorityFeePerGas = BigInt(1500000000); // 1.5 gwei
+    const maxFeePerGas = baseFee + maxPriorityFeePerGas;
 
     return {
       baseFee,
@@ -236,7 +229,96 @@ export async function getCurrentGasPrices(): Promise<{
       maxPriorityFeePerGas,
     };
   } catch (error) {
-    console.error('Failed to get current gas prices:', error);
+    console.error("❌ Failed to get current gas prices:", error);
     return null;
+  }
+}
+
+// New function to check for auxiliary funds capability
+export async function checkAuxiliaryFundsCapability(address: `0x${string}`): Promise<boolean> {
+  try {
+    // Check if the wallet supports auxiliary funds (MagicSpend)
+    const provider = window.ethereum;
+    if (!provider) {
+      console.warn("⚠️ No Ethereum provider found");
+      return false;
+    }
+
+    const capabilities = await provider.request({
+      method: "wallet_getCapabilities",
+      params: [address],
+    });
+
+    const hasAuxFunds = capabilities?.[8453]?.auxiliaryFunds?.supported ?? false;
+    console.log("🔍 Auxiliary funds capability:", hasAuxFunds);
+    return hasAuxFunds;
+  } catch (error) {
+    console.warn("⚠️ Could not check auxiliary funds capability:", error);
+    return false;
+  }
+}
+
+// New function to get total balance including auxiliary funds
+export async function getTotalBalance(address: `0x${string}`): Promise<{
+  onchainBalance: bigint;
+  auxiliaryBalance: bigint;
+  totalBalance: bigint;
+  hasAuxiliaryFunds: boolean;
+}> {
+  try {
+    const publicClient = createPublicClient({
+      chain: base,
+      transport: http(),
+    });
+
+    // Get onchain balance
+    const onchainBalance = await publicClient.getBalance({ address });
+    
+    // Check for auxiliary funds
+    const hasAuxiliaryFunds = await checkAuxiliaryFundsCapability(address);
+    let auxiliaryBalance = BigInt(0);
+
+    if (hasAuxiliaryFunds) {
+      try {
+        // Try to get auxiliary balance from Coinbase
+        const provider = window.ethereum;
+        if (provider) {
+          const auxiliaryData = await provider.request({
+            method: "wallet_getAuxiliaryFunds",
+            params: [address],
+          });
+          
+          if (auxiliaryData?.balance) {
+            auxiliaryBalance = BigInt(auxiliaryData.balance);
+          }
+        }
+      } catch (error) {
+        console.warn("⚠️ Could not get auxiliary balance:", error);
+      }
+    }
+
+    const totalBalance = onchainBalance + auxiliaryBalance;
+
+    console.log("💰 Balance breakdown:", {
+      onchain: onchainBalance.toString(),
+      auxiliary: auxiliaryBalance.toString(),
+      total: totalBalance.toString(),
+      hasAuxiliaryFunds,
+    });
+
+    return {
+      onchainBalance,
+      auxiliaryBalance,
+      totalBalance,
+      hasAuxiliaryFunds,
+    };
+  } catch (error) {
+    console.error("❌ Failed to get total balance:", error);
+    return {
+      onchainBalance: BigInt(0),
+      auxiliaryBalance: BigInt(0),
+      totalBalance: BigInt(0),
+      hasAuxiliaryFunds: false,
+    };
   }
 } 

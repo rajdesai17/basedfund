@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useCallback, useMemo } from "react";
+import { type ReactNode, useState, useCallback, useMemo, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { encodeFunctionData } from "viem";
 import {
@@ -19,7 +19,7 @@ import {
 import { useNotification } from "@coinbase/onchainkit/minikit";
 import { Address, Avatar } from "@coinbase/onchainkit/identity";
 import { FUNDBASE_ABI, TOKENS } from "@/lib/contract";
-import { handleRpcError } from "@/lib/wagmi-config";
+import { handleRpcError, getTotalBalance } from "@/lib/wagmi-config";
 
 // Types
 export type Idea = {
@@ -645,6 +645,178 @@ export function Icon({ name, size = "md", className = "" }: IconProps) {
   );
 }
 
+// ===== CUSTOM BALANCE COMPONENT =====
+
+// Custom Balance Component that handles auxiliary funds
+type CustomBalanceProps = {
+  address: `0x${string}`;
+  className?: string;
+};
+
+export function CustomBalance({ address, className = "" }: CustomBalanceProps) {
+  const [balanceData, setBalanceData] = useState<{
+    onchainBalance: bigint;
+    auxiliaryBalance: bigint;
+    totalBalance: bigint;
+    hasAuxiliaryFunds: boolean;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const mounted = true;
+
+    const fetchBalance = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getTotalBalance(address);
+        if (mounted) {
+          setBalanceData(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch balance:", error);
+        if (mounted) {
+          setBalanceData({
+            onchainBalance: BigInt(0),
+            auxiliaryBalance: BigInt(0),
+            totalBalance: BigInt(0),
+            hasAuxiliaryFunds: false,
+          });
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (address) {
+      fetchBalance();
+      
+      // Refresh balance every 30 seconds
+      const interval = setInterval(fetchBalance, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [address]);
+
+  if (isLoading) {
+    return (
+      <div className={`flex items-center space-x-2 ${className}`}>
+        <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+        <span className="text-sm text-gray-500">Loading balance...</span>
+      </div>
+    );
+  }
+
+  if (!balanceData) {
+    return (
+      <div className={`text-sm text-gray-500 ${className}`}>
+        Balance unavailable
+      </div>
+    );
+  }
+
+  const formatEth = (wei: bigint) => {
+    return Number(wei) / 1e18;
+  };
+
+  const { onchainBalance, auxiliaryBalance, totalBalance, hasAuxiliaryFunds } = balanceData;
+
+  return (
+    <div className={`flex items-center space-x-2 ${className}`}>
+      <Icon name="eth" size="sm" className="text-blue-600" />
+      <div className="flex flex-col">
+        <span className="text-sm font-medium text-gray-900">
+          {formatEth(totalBalance).toFixed(4)} ETH
+        </span>
+        {hasAuxiliaryFunds && auxiliaryBalance > BigInt(0) && (
+          <span className="text-xs text-green-600">
+            +{formatEth(auxiliaryBalance).toFixed(4)} MagicSpend
+          </span>
+        )}
+        {onchainBalance === BigInt(0) && hasAuxiliaryFunds && (
+          <span className="text-xs text-blue-600">
+            Using MagicSpend
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ===== CUSTOM TRANSACTION COMPONENTS =====
+
+// Custom Transaction Button that handles auxiliary funds
+type CustomTransactionButtonProps = {
+  children: ReactNode;
+  className?: string;
+  disabled?: boolean;
+  onClick?: () => void;
+  balanceData?: {
+    onchainBalance: bigint;
+    auxiliaryBalance: bigint;
+    totalBalance: bigint;
+    hasAuxiliaryFunds: boolean;
+  } | null;
+};
+
+export function CustomTransactionButton({ 
+  children, 
+  className = "", 
+  disabled = false,
+  onClick,
+  balanceData 
+}: CustomTransactionButtonProps) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleClick = async () => {
+    if (disabled || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      if (onClick) {
+        await onClick();
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Don't disable based on onchain balance if auxiliary funds are available
+  const shouldDisable = disabled || isLoading;
+  
+  // Show auxiliary funds info if available
+  const showAuxiliaryInfo = balanceData?.hasAuxiliaryFunds && balanceData.onchainBalance === BigInt(0);
+
+  return (
+    <div className="space-y-2">
+      <button
+        className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
+          shouldDisable 
+            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+            : 'bg-blue-600 hover:bg-blue-700 text-white'
+        } ${className}`}
+        onClick={handleClick}
+        disabled={shouldDisable}
+      >
+        {isLoading ? (
+          <div className="flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+            Processing...
+          </div>
+        ) : (
+          children
+        )}
+      </button>
+      
+      {showAuxiliaryInfo && (
+        <div className="text-xs text-blue-600 text-center">
+          💡 Using MagicSpend for gas fees
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ===== FEATURE COMPONENTS =====
 
 // Post Idea Component
@@ -658,8 +830,46 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
   const [fundingGoal, setFundingGoal] = useState("");
   const [overfundingMechanism, setOverfundingMechanism] = useState("Burn Excess");
   const [error, setError] = useState<string | null>(null);
+  const [balanceData, setBalanceData] = useState<{
+    onchainBalance: bigint;
+    auxiliaryBalance: bigint;
+    totalBalance: bigint;
+    hasAuxiliaryFunds: boolean;
+  } | null>(null);
   const { address } = useAccount();
   const sendNotification = useNotification();
+
+  // Fetch balance data including auxiliary funds
+  useEffect(() => {
+    const mounted = true;
+
+    const fetchBalance = async () => {
+      if (!address) return;
+      
+      try {
+        const data = await getTotalBalance(address);
+        if (mounted) {
+          setBalanceData(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch balance:", error);
+        if (mounted) {
+          setBalanceData({
+            onchainBalance: BigInt(0),
+            auxiliaryBalance: BigInt(0),
+            totalBalance: BigInt(0),
+            hasAuxiliaryFunds: false,
+          });
+        }
+      }
+    };
+
+    fetchBalance();
+    
+    // Refresh balance every 30 seconds
+    const interval = setInterval(fetchBalance, 30000);
+    return () => clearInterval(interval);
+  }, [address]);
 
   const validateForm = useCallback(() => {
     const newErrors: { [key: string]: string } = {};
@@ -837,6 +1047,21 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
             <TransactionToastAction />
           </TransactionToast>
         </Transaction>
+
+        {/* Show balance info */}
+        {balanceData && (
+          <div className="text-xs text-gray-600 text-center">
+            <div className="flex items-center justify-center space-x-2">
+              <Icon name="eth" size="sm" className="text-blue-600" />
+              <span>
+                Available: {Number(balanceData.totalBalance) / 1e18} ETH
+                {balanceData.hasAuxiliaryFunds && balanceData.onchainBalance === BigInt(0) && (
+                  <span className="text-blue-600 ml-1">(MagicSpend)</span>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 pt-6 border-t border-gray-200">

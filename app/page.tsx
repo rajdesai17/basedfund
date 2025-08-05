@@ -10,7 +10,6 @@ import {
   Identity,
   Address,
   Avatar,
-  EthBalance,
 } from "@coinbase/onchainkit/identity";
 import {
   ConnectWallet,
@@ -25,6 +24,7 @@ import {
   PostIdea,
   IdeaCard,
   BackersModal,
+  CustomBalance,
   type Idea,
   type Backer
 } from "./components/FundBaseComponents";
@@ -483,7 +483,7 @@ export default function App() {
                 <Avatar />
                 <Name />
                 <Address />
-                <EthBalance />
+                {address && <CustomBalance address={address} />}
               </Identity>
               <WalletDropdownDisconnect />
             </WalletDropdown>
