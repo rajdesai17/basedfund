@@ -1,6 +1,6 @@
 import { createPublicClient, http, type WalletClient } from "viem";
 import { base } from "wagmi/chains";
-import { handleRpcError } from "./wagmi-config";
+import { handleRpcError, getCurrentGasPrices } from "./wagmi-config";
 
 // FundBase contract ABI
 export const FUNDBASE_ABI = [
@@ -161,7 +161,37 @@ function getContractAddress(): `0x${string}` {
   return contractAddress as `0x${string}`;
 }
 
-// Enhanced contract interaction with proper validation
+// Enhanced gas estimation with fallback
+async function estimateGasWithFallback(
+  simulationRequest: any,
+  walletClient: WalletClient
+): Promise<bigint> {
+  try {
+    // Try to get current gas prices for better estimation
+    const gasPrices = await getCurrentGasPrices();
+    
+    if (gasPrices) {
+      console.log("📊 Current gas prices:", {
+        baseFee: gasPrices.baseFee.toString(),
+        maxFeePerGas: gasPrices.maxFeePerGas.toString(),
+        maxPriorityFeePerGas: gasPrices.maxPriorityFeePerGas.toString(),
+      });
+    }
+
+    // First attempt: standard simulation
+    const { request } = await publicClient.simulateContract(simulationRequest);
+    return request.gas || BigInt(300000); // Default gas limit if estimation fails
+  } catch (error) {
+    console.warn("⚠️ Gas estimation failed, using fallback:", error);
+    
+    // Fallback: use conservative gas estimate
+    const fallbackGas = BigInt(500000); // Conservative estimate
+    console.log("🔄 Using fallback gas estimate:", fallbackGas.toString());
+    return fallbackGas;
+  }
+}
+
+// Enhanced contract interaction with proper validation and gas estimation
 export async function postIdea(
   id: string,
   title: string,
@@ -176,12 +206,22 @@ export async function postIdea(
 
     console.log("📝 Posting idea with validated parameters:", { id, title, description });
 
+    // Enhanced gas estimation
+    const gas = await estimateGasWithFallback({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "postIdea",
+      args: [id, title, description],
+      account: walletClient.account,
+    }, walletClient);
+
     const { request } = await publicClient.simulateContract({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
       functionName: "postIdea",
       args: [id, title, description],
       account: walletClient.account,
+      gas, // Use estimated gas
     });
 
     const hash = await walletClient.writeContract(request);
@@ -206,6 +246,16 @@ export async function backIdeaWithETH(
 
     console.log("💰 Backing idea with ETH:", { id, amount });
 
+    // Enhanced gas estimation for payable function
+    const gas = await estimateGasWithFallback({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "backIdeaWithETH",
+      args: [id],
+      value: amount,
+      account: walletClient.account,
+    }, walletClient);
+
     const { request } = await publicClient.simulateContract({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
@@ -213,6 +263,7 @@ export async function backIdeaWithETH(
       args: [id],
       value: amount,
       account: walletClient.account,
+      gas, // Use estimated gas
     });
 
     const hash = await walletClient.writeContract(request);
@@ -238,12 +289,22 @@ export async function backIdeaWithToken(
 
     console.log("💰 Backing idea with token:", { id, token, amount });
 
+    // Enhanced gas estimation
+    const gas = await estimateGasWithFallback({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "backIdeaWithToken",
+      args: [id, token, amount],
+      account: walletClient.account,
+    }, walletClient);
+
     const { request } = await publicClient.simulateContract({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
       functionName: "backIdeaWithToken",
       args: [id, token, amount],
       account: walletClient.account,
+      gas, // Use estimated gas
     });
 
     const hash = await walletClient.writeContract(request);
@@ -267,12 +328,22 @@ export async function withdrawFunds(
 
     console.log("💸 Withdrawing funds for idea:", { id });
 
+    // Enhanced gas estimation
+    const gas = await estimateGasWithFallback({
+      address: getContractAddress(),
+      abi: FUNDBASE_ABI,
+      functionName: "withdrawFunds",
+      args: [id],
+      account: walletClient.account,
+    }, walletClient);
+
     const { request } = await publicClient.simulateContract({
       address: getContractAddress(),
       abi: FUNDBASE_ABI,
       functionName: "withdrawFunds",
       args: [id],
       account: walletClient.account,
+      gas, // Use estimated gas
     });
 
     const hash = await walletClient.writeContract(request);

@@ -7,21 +7,24 @@ export function createWagmiConfig(chain = base) {
   const projectName = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'FundBase';
   const iconUrl = process.env.NEXT_PUBLIC_ICON_URL;
 
-  // Multiple RPC URLs with fallbacks
+  // Enhanced RPC URLs with better fallbacks and gas estimation support
   const rpcUrls = [
     // Primary: Coinbase RPC (if API key is valid)
     ...(apiKey && validateApiKey(apiKey) 
       ? [`https://api.developer.coinbase.com/rpc/v1/base/${apiKey}`] 
       : []),
-    // Fallback RPC URLs (public endpoints)
+    // Enhanced fallback RPC URLs with better gas estimation support
     'https://mainnet.base.org',
     'https://base.blockpi.network/v1/rpc/public',
     'https://1rpc.io/base',
     'https://base.meowrpc.com',
     'https://base.drpc.org',
+    'https://base-mainnet.public.blastapi.io',
+    'https://base.publicnode.com',
+    'https://base-rpc.publicnode.com',
   ];
 
-  console.log("🔧 Creating Wagmi Config:", {
+  console.log("🔧 Creating Enhanced Wagmi Config:", {
     chain: chain.name,
     chainId: chain.id,
     primaryRpc: rpcUrls[0] || 'No valid RPC configured',
@@ -30,15 +33,15 @@ export function createWagmiConfig(chain = base) {
     totalRpcUrls: rpcUrls.length,
   });
 
-  // Create transport with primary RPC endpoint
+  // Create transport with enhanced configuration for better gas estimation
   const transport = http(rpcUrls[0], {
     batch: {
       batchSize: 1024,
       wait: 16,
     },
-    retryCount: 3,
+    retryCount: 5, // Increased retry count
     retryDelay: 1000,
-    timeout: 15000, // 15 second timeout
+    timeout: 20000, // Increased timeout to 20 seconds
   });
 
   return createConfig({
@@ -56,14 +59,29 @@ export function createWagmiConfig(chain = base) {
       [chain.id]: transport,
     },
     pollingInterval: 4000,
+    // Enhanced configuration for better transaction handling
+    ssr: false, // Disable SSR to prevent hydration issues
   });
 }
 
-// Enhanced error handling utility based on Coinbase documentation
+// Enhanced error handling utility with gas estimation specific errors
 export function handleRpcError(error: unknown, context: string) {
   console.error(`RPC Error in ${context}:`, error);
   
   const errorMessage = error instanceof Error ? error.message : String(error);
+  
+  // Check for gas estimation errors
+  if (errorMessage.includes('gas') || errorMessage.includes('fee') || errorMessage.includes('estimate')) {
+    console.warn(`⚠️ Gas estimation error detected in ${context}. This indicates:`);
+    console.warn('   • Network congestion causing high gas fees');
+    console.warn('   • RPC endpoint issues with gas estimation');
+    console.warn('   • Contract interaction problems');
+    console.warn('💡 Solutions:');
+    console.warn('   • Try again in a few minutes');
+    console.warn('   • Check network status');
+    console.warn('   • Ensure sufficient wallet balance');
+    console.warn('   • Clear browser cache and retry');
+  }
   
   // Check for 400 Bad Request errors (per Coinbase docs)
   if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
@@ -99,12 +117,21 @@ export function handleRpcError(error: unknown, context: string) {
   if (errorMessage.includes('wallet') || errorMessage.includes('connection')) {
     console.warn(`Wallet connection error detected in ${context}. Ensure wallet is properly connected.`);
   }
+
+  // Check for transaction simulation errors
+  if (errorMessage.includes('simulation') || errorMessage.includes('revert')) {
+    console.warn(`Transaction simulation error detected in ${context}. This may indicate:`);
+    console.warn('   • Insufficient balance');
+    console.warn('   • Contract state issues');
+    console.warn('   • Invalid transaction parameters');
+  }
 }
 
-// RPC health check utility
+// Enhanced RPC health check utility with gas estimation test
 export async function checkRpcHealth(rpcUrl: string): Promise<boolean> {
   try {
-    const response = await fetch(rpcUrl, {
+    // Test basic connectivity
+    const blockResponse = await fetch(rpcUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -117,7 +144,30 @@ export async function checkRpcHealth(rpcUrl: string): Promise<boolean> {
       }),
     });
     
-    return response.ok;
+    if (!blockResponse.ok) {
+      console.error(`RPC health check failed for ${rpcUrl}: HTTP ${blockResponse.status}`);
+      return false;
+    }
+
+    // Test gas estimation capability
+    const gasResponse = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_estimateGas',
+        params: [{
+          from: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+          to: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+          value: '0x0',
+        }],
+        id: 2,
+      }),
+    });
+    
+    return gasResponse.ok;
   } catch (error) {
     console.error(`RPC health check failed for ${rpcUrl}:`, error);
     return false;
@@ -148,4 +198,46 @@ export function validateApiKey(apiKey: string | undefined): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   
   return newFormatRegex.test(apiKey) || uuidRegex.test(apiKey);
+}
+
+// New utility function to get current gas prices
+export async function getCurrentGasPrices(): Promise<{
+  baseFee: bigint;
+  maxFeePerGas: bigint;
+  maxPriorityFeePerGas: bigint;
+} | null> {
+  try {
+    const response = await fetch('https://mainnet.base.org', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_getBlockByNumber',
+        params: ['latest', false],
+        id: 1,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const baseFee = BigInt(data.result.baseFeePerGas || '0');
+    
+    // Calculate reasonable fee estimates
+    const maxPriorityFeePerGas = BigInt(1000000000); // 1 gwei
+    const maxFeePerGas = baseFee * BigInt(2) + maxPriorityFeePerGas; // 2x base fee + priority fee
+
+    return {
+      baseFee,
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+    };
+  } catch (error) {
+    console.error('Failed to get current gas prices:', error);
+    return null;
+  }
 } 
