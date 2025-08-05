@@ -71,27 +71,27 @@ export function Button({
   loading = false,
 }: ButtonProps) {
   const baseClasses =
-    "inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none relative";
+    "inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none relative touch-manipulation";
 
   const variantClasses = {
     primary:
-      "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl",
+      "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-lg hover:shadow-xl",
     secondary:
-      "bg-gray-100 hover:bg-gray-200 text-gray-900 border border-gray-200",
+      "bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 border border-gray-200",
     outline:
-      "border-2 border-blue-600 hover:bg-blue-50 text-blue-600 hover:border-blue-700",
+      "border-2 border-blue-600 hover:bg-blue-50 active:bg-blue-100 text-blue-600 hover:border-blue-700",
     ghost:
-      "hover:bg-gray-100 text-gray-600 hover:text-gray-900",
+      "hover:bg-gray-100 active:bg-gray-200 text-gray-600 hover:text-gray-900",
     success:
-      "bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl",
+      "bg-green-600 hover:bg-green-700 active:bg-green-800 text-white shadow-lg hover:shadow-xl",
     warning:
-      "bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl",
+      "bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white shadow-lg hover:shadow-xl",
   };
 
   const sizeClasses = {
-    sm: "text-xs px-3 py-1.5 rounded-md",
-    md: "text-sm px-4 py-2 rounded-lg",
-    lg: "text-base px-6 py-3 rounded-lg",
+    sm: "text-xs px-2 py-1.5 rounded-md min-h-[32px] sm:px-3",
+    md: "text-sm px-3 py-2 rounded-lg min-h-[40px] sm:px-4",
+    lg: "text-base px-4 py-3 rounded-lg min-h-[48px] sm:px-6",
   };
 
   return (
@@ -150,7 +150,7 @@ export function Input({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
-        className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+        className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base ${
           error 
             ? 'border-red-300 bg-red-50' 
             : 'border-gray-300 bg-white hover:border-gray-400'
@@ -201,7 +201,7 @@ export function Textarea({
         placeholder={placeholder}
         rows={rows}
         maxLength={maxLength}
-        className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
+        className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-base ${
           error 
             ? 'border-red-300 bg-red-50' 
             : 'border-gray-300 bg-white hover:border-gray-400'
@@ -245,7 +245,7 @@ export function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white ${
+        className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white text-base ${
           error 
             ? 'border-red-300 bg-red-50' 
             : 'border-gray-300 hover:border-gray-400'
@@ -297,16 +297,16 @@ export function Card({
 
   return (
     <div
-      className={`rounded-xl overflow-hidden transition-all duration-200 ${variantClasses[variant]} ${className} ${onClick ? "cursor-pointer hover:scale-[1.02]" : ""}`}
+      className={`rounded-xl overflow-hidden transition-all duration-200 ${variantClasses[variant]} ${className} ${onClick ? "cursor-pointer hover:scale-[1.02] active:scale-[0.98]" : ""}`}
       onClick={onClick}
       onKeyDown={onClick ? handleKeyDown : undefined}
       tabIndex={onClick ? 0 : undefined}
       role={onClick ? "button" : undefined}
     >
       {(title || subtitle) && (
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 bg-gray-50/50">
       {title && (
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">
             {title}
           </h3>
           )}
@@ -317,7 +317,7 @@ export function Card({
           )}
         </div>
       )}
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   );
 }
@@ -673,7 +673,6 @@ export function CustomBalance({ address, className = "" }: CustomBalanceProps) {
           setBalanceData(data);
         }
       } catch (error) {
-        console.error("Failed to fetch balance:", error);
         if (mounted) {
           setBalanceData({
             onchainBalance: BigInt(0),
@@ -852,7 +851,6 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
           setBalanceData(data);
         }
       } catch (error) {
-        console.error("Failed to fetch balance:", error);
         if (mounted) {
           setBalanceData({
             onchainBalance: BigInt(0),
@@ -918,13 +916,9 @@ export function PostIdea({ onIdeaPosted }: PostIdeaProps) {
       title: "Idea Posted! 🚀",
       body: `Your idea "${newIdea.title}" has been posted to the blockchain!`,
     });
-    
-    console.log("✅ Idea posted successfully to blockchain:", newIdea.title);
-    console.log("Transaction hash:", transactionHash);
   }, [title, description, address, onIdeaPosted, sendNotification]);
 
   const handleTransactionError = useCallback((error: TransactionError) => {
-    console.error("❌ Failed to post idea to blockchain:", error);
     handleRpcError(error, "PostIdea");
     setError("Failed to post idea to blockchain. Please check your connection and try again.");
     
@@ -1156,13 +1150,9 @@ export function IdeaCard({ idea, onBack, onViewBackers, onWithdraw }: IdeaCardPr
       title: "Idea Backed! 💰",
       body: `You backed "${idea.title}" with ${backAmount} ${selectedToken}!`,
     });
-
-    console.log(`Transaction successful: ${transactionHash}`);
   }, [backAmount, idea.id, idea.title, selectedToken, onBack, sendNotification]);
 
   const handleTransactionError = useCallback((error: TransactionError) => {
-    console.error("Transaction failed:", error);
-    
     // Use the RPC error handling utility
     handleRpcError(error, "IdeaCard-BackTransaction");
     
@@ -1184,12 +1174,9 @@ export function IdeaCard({ idea, onBack, onViewBackers, onWithdraw }: IdeaCardPr
       title: "Funds Withdrawn! 💰",
       body: `Successfully withdrew funds from "${idea.title}"!`,
     });
-
-    console.log(`Withdrawal successful: ${transactionHash}`);
   }, [idea.id, idea.title, onWithdraw, sendNotification]);
 
   const handleWithdrawError = useCallback((error: TransactionError) => {
-    console.error("Withdrawal failed:", error);
     setShowWithdrawTransaction(false);
     
     // Use the RPC error handling utility
@@ -1402,20 +1389,20 @@ export function BackersModal({ idea, backers, isOpen, onClose }: BackersModalPro
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden shadow-2xl">
-        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] sm:max-h-[80vh] overflow-hidden shadow-2xl">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
               Backers for &quot;{idea.title}&quot;
-          </h3>
-            <p className="text-sm text-gray-600 mt-1">
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">
               A record of all contributions to this project
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors touch-manipulation ml-2"
             aria-label="Close modal"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1424,7 +1411,7 @@ export function BackersModal({ idea, backers, isOpen, onClose }: BackersModalPro
           </button>
         </div>
         
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-120px)] sm:max-h-[60vh]">
           {backers.length === 0 ? (
             <div className="text-center py-8">
               <Icon name="users" size="lg" className="mx-auto text-gray-400 mb-4" />
@@ -1435,23 +1422,23 @@ export function BackersModal({ idea, backers, isOpen, onClose }: BackersModalPro
           ) : (
             <div className="space-y-3">
               {backers.map((backer, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors gap-3 sm:gap-0">
                   <div className="flex items-center space-x-3">
                     <Avatar address={backer.wallet as `0x${string}`} />
-                    <div>
-                      <div className="font-medium text-gray-900">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 text-sm">
                         <Address address={backer.wallet as `0x${string}`} />
                       </div>
-                      <div className="text-xs text-gray-500 flex items-center">
+                      <div className="text-xs text-gray-500 flex items-center mt-1">
                         <Icon name="calendar" size="sm" className="mr-1" />
                         {formatDate(backer.timestamp)}
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="flex items-center justify-end space-x-1">
+                  <div className="text-right sm:text-left">
+                    <div className="flex items-center justify-end sm:justify-start space-x-1">
                       {getTokenIcon(backer.token)}
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-gray-900 text-sm">
                         {formatAmount(backer.amount, getTokenName(backer.token))} {getTokenName(backer.token)}
                       </span>
                     </div>

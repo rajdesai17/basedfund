@@ -406,7 +406,7 @@ function TransactionCard() {
   const handleSuccess = useCallback(async (response: TransactionResponse) => {
     const transactionHash = response.transactionReceipts[0].transactionHash;
 
-    console.log(`Transaction successful: ${transactionHash}`);
+    // Transaction success handled silently
 
     await sendNotification({
       title: "Congratulations!",
@@ -435,9 +435,9 @@ function TransactionCard() {
             <Transaction
               calls={calls}
               onSuccess={handleSuccess}
-              onError={(error: TransactionError) =>
-                console.error("Transaction failed:", error)
-              }
+              onError={(error: TransactionError) => {
+                // Transaction error handled silently
+              }}
             >
               <TransactionButton className="text-white text-md" />
               <TransactionStatus>

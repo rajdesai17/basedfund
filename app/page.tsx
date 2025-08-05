@@ -41,6 +41,7 @@ export default function App() {
   const [showBackersModal, setShowBackersModal] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [walletReady, setWalletReady] = useState(false);
+  const [activeTab, setActiveTab] = useState<'post' | 'browse'>('browse');
 
   const addFrame = useAddFrame();
   const sendNotification = useNotification();
@@ -54,21 +55,16 @@ export default function App() {
   useEffect(() => {
     if (isClient && (isConnected || address)) {
       setWalletReady(true);
-      console.log("✅ Wallet connected:", address);
-      console.log("✅ Wallet ready for blockchain operations");
     } else if (isClient && !isConnecting) {
       setWalletReady(false);
-      console.log("❌ Wallet not connected - blockchain operations will fail");
     }
   }, [isClient, isConnected, address, isConnecting]);
 
   // Enhanced wallet connection validation
   const validateWalletConnection = useCallback(() => {
     if (!isConnected || !address) {
-      console.warn("⚠️ Wallet not connected - cannot perform blockchain operations");
       return false;
     }
-    console.log("✅ Wallet connection validated for blockchain operations");
     return true;
   }, [isConnected, address]);
 
@@ -85,32 +81,17 @@ export default function App() {
       
       // Validate wallet connection before blockchain operations
       if (!validateWalletConnection()) {
-        console.log("⏳ Waiting for wallet connection...");
         setIdeas([]);
         return;
       }
-      
-      // Debug: Check if wallet is connected
-      console.log("Wallet context:", context);
-      console.log("Wallet address:", address);
-      console.log("Is connected:", isConnected);
-      console.log("Contract address:", process.env.NEXT_PUBLIC_FUNDBASE_CONTRACT_ADDRESS);
       
       const contractIdeas = await getAllIdeas();
       
-      console.log("Contract ideas result:", contractIdeas);
-      
       // Check if we got valid data
       if (!contractIdeas || contractIdeas.length === 0) {
-        console.log("No ideas found in contract");
         setIdeas([]);
         return;
       }
-      
-      // Debug: Log the structure of the first idea
-      console.log("First idea structure:", contractIdeas[0]);
-      console.log("First idea type:", typeof contractIdeas[0]);
-      console.log("First idea is array:", Array.isArray(contractIdeas[0]));
       
       // Transform contract data to match our Idea type with better error handling
       const transformedIdeas: Idea[] = contractIdeas
@@ -119,10 +100,6 @@ export default function App() {
             // Handle both array and object formats
             const isArray = Array.isArray(idea);
             const isObject = idea && typeof idea === 'object' && !Array.isArray(idea);
-            
-            console.log("Filtering idea:", idea);
-            console.log("Is array:", isArray);
-            console.log("Is object:", isObject);
             
             if (isArray) {
               // Handle array format (legacy)
@@ -137,7 +114,6 @@ export default function App() {
                      (typeof ideaArray[5] === 'number') &&
                      (typeof ideaArray[6] === 'number' || typeof ideaArray[6] === 'bigint');
               
-              console.log("Array validation result:", isValid);
               return isValid;
             } else if (isObject) {
               // Handle object format (named tuple from Viem)
@@ -146,20 +122,16 @@ export default function App() {
                                      ideaObj.creator && ideaObj.totalRaisedETH !== undefined && 
                                      ideaObj.backerCount !== undefined && ideaObj.createdAt !== undefined;
               
-              console.log("Object validation result:", hasRequiredProps);
               return hasRequiredProps;
             }
             
             return false;
           } catch (error) {
-            console.warn("Invalid idea data:", idea, error);
             return false;
           }
         })
         .map((idea: unknown) => {
           try {
-            console.log("Transforming idea:", idea);
-            
             if (Array.isArray(idea)) {
               // Handle array format (legacy)
               const ideaArray = idea as unknown[];
@@ -173,7 +145,6 @@ export default function App() {
                 createdAt: Number(typeof ideaArray[6] === 'number' || typeof ideaArray[6] === 'bigint' ? ideaArray[6] : 0) * 1000,
               };
               
-              console.log("Transformed array idea:", transformed);
               return transformed;
             } else {
               // Handle object format (named tuple from Viem)
@@ -188,11 +159,9 @@ export default function App() {
                 createdAt: Number(ideaObj.createdAt || 0) * 1000, // Convert from seconds to milliseconds
               };
               
-              console.log("Transformed object idea:", transformed);
               return transformed;
             }
           } catch (error) {
-            console.error("Error transforming idea:", idea, error);
             // Return a fallback idea to prevent crashes
             return {
               id: "error",
@@ -207,8 +176,6 @@ export default function App() {
         })
         .filter(idea => idea.id !== "error" && idea.id !== ""); // Remove error ideas and empty IDs
       
-      console.log("Transformed ideas:", transformedIdeas);
-      
       // Merge with existing ideas to ensure we don't lose locally posted ideas
       setIdeas(prevIdeas => {
         const blockchainIdeas = new Map(transformedIdeas.map(idea => [idea.id, idea]));
@@ -221,16 +188,10 @@ export default function App() {
           b.createdAt - a.createdAt // Sort by newest first
         );
         
-        console.log("Merged ideas count:", result.length);
-        console.log("Blockchain ideas:", transformedIdeas.length);
-        console.log("Local ideas:", prevIdeas.length);
-        
         return result;
       });
     } catch (error) {
-      console.error("Failed to load ideas from contract:", error);
       // Keep existing ideas if loading fails, don't clear the array
-      console.log("Keeping existing ideas due to blockchain loading error");
     } finally {
       setIsLoadingIdeas(false);
     }
@@ -260,7 +221,6 @@ export default function App() {
     if (!isConnected || !address) return;
     
     const interval = setInterval(() => {
-      console.log("🔄 Periodic refresh of ideas from blockchain...");
       loadIdeasFromContract();
     }, 30000); // Refresh every 30 seconds
     
@@ -269,8 +229,6 @@ export default function App() {
 
   // Handle idea posted
   const handleIdeaPosted = useCallback((idea: Idea) => {
-    console.log("✅ Idea posted successfully:", idea.id);
-    
     // Add the new idea to the list immediately for instant UI feedback
     setIdeas(prevIdeas => {
       // Check if idea already exists to avoid duplicates
@@ -283,7 +241,6 @@ export default function App() {
     
     // Reload ideas from contract after a longer delay to ensure blockchain state is updated
     setTimeout(() => {
-      console.log("🔄 Reloading ideas from blockchain after posting...");
       loadIdeasFromContract();
     }, 5000); // Increased delay to ensure blockchain state is updated
     
@@ -296,8 +253,6 @@ export default function App() {
 
   // Handle backing an idea
   const handleBackIdea = useCallback((ideaId: string, token: string, amount: bigint) => {
-    console.log(`Backing idea ${ideaId} with ${amount} of token ${token}`);
-    
     // Reload all ideas from blockchain to get the latest data
     setTimeout(() => {
       loadIdeasFromContract();
@@ -423,7 +378,8 @@ export default function App() {
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 px-3 text-blue-600 cursor-pointer"
         >
           <Icon name="plus" size="sm" />
-          Save Frame
+          <span className="hidden sm:inline">Save Frame</span>
+          <span className="sm:hidden">Save</span>
         </div>
       );
     }
@@ -432,7 +388,8 @@ export default function App() {
       return (
         <div className="flex items-center space-x-1 text-sm font-medium text-green-600 animate-fade-out">
           <Icon name="check" size="sm" className="text-green-600" />
-          <span>Saved</span>
+          <span className="hidden sm:inline">Saved</span>
+          <span className="sm:hidden">✓</span>
         </div>
       );
     }
@@ -464,14 +421,14 @@ export default function App() {
   return (
     <div className="h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="border-b border-gray-200 px-6 py-4 flex items-center justify-between bg-white">
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 bg-blue-600 rounded"></div>
-          <h1 className="text-lg font-medium text-gray-900">FundBase</h1>
-          <span className="text-sm text-gray-500">• Professional Platform</span>
+      <header className="border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between bg-white">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-600 rounded"></div>
+          <h1 className="text-base sm:text-lg font-medium text-gray-900">FundBase</h1>
+          <span className="hidden sm:inline text-sm text-gray-500">• Professional Platform</span>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <Wallet className="z-10">
             <ConnectWallet>
               <div className="wallet-connect-button">
@@ -492,47 +449,125 @@ export default function App() {
         </div>
       </header>
 
+      {/* Mobile Tab Navigation */}
+      <div className="sm:hidden border-b border-gray-200 bg-white">
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('browse')}
+            className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+              activeTab === 'browse'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Icon name="trending" size="sm" />
+              <span>Browse</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('post')}
+            className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+              activeTab === 'post'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Icon name="plus" size="sm" />
+              <span>Post</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="flex-1 flex min-h-0">
-        {/* Left Sidebar - Post New Idea */}
-        <div className="w-80 border-r border-gray-200 p-6">
-          <PostIdea onIdeaPosted={handleIdeaPosted} />
+        {/* Desktop Layout */}
+        <div className="hidden sm:flex w-full">
+          {/* Left Sidebar - Post New Idea */}
+          <div className="w-80 border-r border-gray-200 p-6">
+            <PostIdea onIdeaPosted={handleIdeaPosted} />
+          </div>
+
+          {/* Right Panel - Project Registry */}
+          <div className="flex-1 p-6 overflow-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-base font-medium text-gray-900">Project Registry</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {ideas.length} projects • {totalFunding.toFixed(1)} ETH total funding
+                </p>
+              </div>
+              <div className="text-xs text-gray-500">Sorted by funding amount</div>
+            </div>
+            
+            <div className="space-y-4">
+              {isLoadingIdeas ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <p className="mt-2 text-gray-600">Loading ideas from blockchain...</p>
+                </div>
+              ) : ideas.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">No ideas posted yet. Be the first to post an idea!</p>
+                </div>
+              ) : (
+                sortedIdeas.map((idea) => (
+                  <IdeaCard
+                    key={idea.id}
+                    idea={idea}
+                    onBack={handleBackIdea}
+                    onViewBackers={handleViewBackers}
+                    onWithdraw={handleWithdrawFunds}
+                  />
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Right Panel - Project Registry */}
-        <div className="flex-1 p-6 overflow-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-base font-medium text-gray-900">Project Registry</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {ideas.length} projects • {totalFunding.toFixed(1)} ETH total funding
-              </p>
+        {/* Mobile Layout */}
+        <div className="sm:hidden w-full">
+          {activeTab === 'post' ? (
+            <div className="p-4">
+              <PostIdea onIdeaPosted={handleIdeaPosted} />
             </div>
-            <div className="text-xs text-gray-500">Sorted by funding amount</div>
-          </div>
-          
-          <div className="space-y-4">
-            {isLoadingIdeas ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-gray-600">Loading ideas from blockchain...</p>
+          ) : (
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-base font-medium text-gray-900">Projects</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {ideas.length} projects • {totalFunding.toFixed(1)} ETH total
+                  </p>
+                </div>
               </div>
-            ) : ideas.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-600">No ideas posted yet. Be the first to post an idea!</p>
+              
+              <div className="space-y-3">
+                {isLoadingIdeas ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="mt-2 text-gray-600">Loading ideas...</p>
+                  </div>
+                ) : ideas.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No ideas posted yet. Be the first!</p>
+                  </div>
+                ) : (
+                  sortedIdeas.map((idea) => (
+                    <IdeaCard
+                      key={idea.id}
+                      idea={idea}
+                      onBack={handleBackIdea}
+                      onViewBackers={handleViewBackers}
+                      onWithdraw={handleWithdrawFunds}
+                    />
+                  ))
+                )}
               </div>
-            ) : (
-              sortedIdeas.map((idea) => (
-                <IdeaCard
-                  key={idea.id}
-                  idea={idea}
-                  onBack={handleBackIdea}
-                  onViewBackers={handleViewBackers}
-                  onWithdraw={handleWithdrawFunds}
-                />
-              ))
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

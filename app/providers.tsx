@@ -5,7 +5,8 @@ import { base } from "wagmi/chains";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { WagmiProvider } from "wagmi";
-import { createWagmiConfig, validateApiKey } from "@/lib/wagmi-config";
+import { createWagmiConfig } from "@/lib/wagmi-config";
+import { validateApiKey, createLogger } from "@/lib/security";
 
 export function Providers(props: { children: ReactNode }) {
   // For testing, you can temporarily switch to Base Sepolia
@@ -15,19 +16,13 @@ export function Providers(props: { children: ReactNode }) {
   const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY;
   const projectName = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME;
   const iconUrl = process.env.NEXT_PUBLIC_ICON_URL;
+  const logger = createLogger('Providers');
 
-  // Debug logging
-  console.log("🔧 MiniKitProvider Config:", {
-    apiKey: apiKey ? (validateApiKey(apiKey) ? "✅ Valid" : "⚠️ Invalid") : "❌ Missing",
-    chain: selectedChain.name,
-    chainId: selectedChain.id,
-    projectName: projectName,
-    logo: iconUrl,
-  });
+  // Environment validation
 
   // Validate required environment variables
   if (!apiKey) {
-    console.error("❌ NEXT_PUBLIC_ONCHAINKIT_API_KEY is missing");
+    // Silent error handling in production
     return (
       <div className="p-4 text-red-600 bg-red-50 border border-red-200 rounded-lg">
         <h3 className="font-semibold mb-2">Configuration Error</h3>
@@ -48,7 +43,7 @@ export function Providers(props: { children: ReactNode }) {
   }
 
   if (!validateApiKey(apiKey)) {
-    console.error("❌ Invalid API key format");
+    // Silent error handling in production
     return (
       <div className="p-4 text-red-600 bg-red-50 border border-red-200 rounded-lg">
         <h3 className="font-semibold mb-2">Invalid API Key</h3>
@@ -58,7 +53,7 @@ export function Providers(props: { children: ReactNode }) {
   }
 
   if (!projectName) {
-    console.error("❌ NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME is missing");
+    // Silent error handling in production
     return (
       <div className="p-4 text-red-600">
         Error: NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME is not configured

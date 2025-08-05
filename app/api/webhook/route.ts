@@ -49,7 +49,7 @@ async function verifyFidOwnership(fid: number, appKey: `0x${string}`) {
 
     return result.state === 1 && result.keyType === 1;
   } catch (error) {
-    console.error("Key Registry verification failed:", error);
+    // Silent error handling in production
     return false;
   }
 }
@@ -79,11 +79,7 @@ export async function POST(request: Request) {
 
   switch (event.event) {
     case "frame_added":
-      console.log(
-        "frame_added",
-        "event.notificationDetails",
-        event.notificationDetails,
-      );
+      // Frame added event handled silently
       if (event.notificationDetails) {
         await setUserNotificationDetails(fid, event.notificationDetails);
         await sendFrameNotification({
@@ -97,12 +93,12 @@ export async function POST(request: Request) {
 
       break;
     case "frame_removed": {
-      console.log("frame_removed");
+      // Frame removed event handled silently
       await deleteUserNotificationDetails(fid);
       break;
     }
     case "notifications_enabled": {
-      console.log("notifications_enabled", event.notificationDetails);
+      // Notifications enabled event handled silently
       await setUserNotificationDetails(fid, event.notificationDetails);
       await sendFrameNotification({
         fid,
@@ -113,7 +109,7 @@ export async function POST(request: Request) {
       break;
     }
     case "notifications_disabled": {
-      console.log("notifications_disabled");
+      // Notifications disabled event handled silently
       await deleteUserNotificationDetails(fid);
 
       break;

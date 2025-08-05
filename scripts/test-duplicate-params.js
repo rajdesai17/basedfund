@@ -1,9 +1,15 @@
-const API_KEY = '2KFWyKyr1tA0qFvKQp5xLx2m14z0IyOJ';
-const PROJECT_NAME = 'FundBase';
+const API_KEY = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || 'your_api_key_here';
+const PROJECT_NAME = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'FundBase';
 
-console.log('🧪 Testing for duplicate client-project-name parameter...');
-console.log(`📡 API Key: ${API_KEY}`);
-console.log(`🏷️  Project Name: ${PROJECT_NAME}`);
+// Production-ready logging
+const logger = {
+  info: (msg) => process.env.NODE_ENV === 'development' && console.log(msg),
+  error: (msg) => process.env.NODE_ENV === 'development' && console.error(msg)
+};
+
+logger.info('🧪 Testing for duplicate client-project-name parameter...');
+logger.info(`📡 API Key: ${API_KEY ? 'Set' : 'Missing'}`);
+logger.info(`🏷️  Project Name: ${PROJECT_NAME}`);
 
 // Simulate the MiniKit configuration that was causing issues
 const configs = [
@@ -23,19 +29,19 @@ const configs = [
   }
 ];
 
-console.log('\n📋 Configuration Analysis:');
+logger.info('\n📋 Configuration Analysis:');
 configs.forEach((config, index) => {
-  console.log(`${index + 1}. ${config.name}:`);
-  console.log('   ', JSON.stringify(config, null, 2));
+  logger.info(`${index + 1}. ${config.name}:`);
+  logger.info('   ', JSON.stringify(config, null, 2));
 });
 
-console.log('\n✅ FIXED: Removed duplicate name property from MiniKit appearance config');
-console.log('💡 This should eliminate the duplicate client-project-name parameter');
-console.log('🔍 The chain-proxy.wallet.coinbase.com 400 error should now be resolved');
+logger.info('\n✅ FIXED: Removed duplicate name property from MiniKit appearance config');
+logger.info('💡 This should eliminate the duplicate client-project-name parameter');
+logger.info('🔍 The chain-proxy.wallet.coinbase.com 400 error should now be resolved');
 
 // Test the RPC endpoint to make sure it still works
 async function testRpcEndpoint() {
-  console.log('\n🧪 Testing RPC endpoint...');
+  logger.info('\n🧪 Testing RPC endpoint...');
   
   try {
     const response = await fetch(`https://api.developer.coinbase.com/rpc/v1/base/${API_KEY}`, {
@@ -58,16 +64,16 @@ async function testRpcEndpoint() {
     const data = await response.json();
     
     if (data.error) {
-      console.error('❌ RPC Error:', data.error);
+      logger.error('❌ RPC Error:', data.error);
       return false;
     }
 
-    console.log('✅ RPC endpoint working correctly');
-    console.log(`📊 Block Number: ${parseInt(data.result, 16)}`);
+    logger.info('✅ RPC endpoint working correctly');
+    logger.info(`📊 Block Number: ${parseInt(data.result, 16)}`);
     return true;
 
   } catch (error) {
-    console.error('❌ RPC test failed:', error.message);
+    logger.error('❌ RPC test failed:', error.message);
     return false;
   }
 }
@@ -75,11 +81,11 @@ async function testRpcEndpoint() {
 // Run the test
 testRpcEndpoint().then(success => {
   if (success) {
-    console.log('\n🎉 Configuration fix successful!');
-    console.log('🚀 Your app should now work without the duplicate parameter error.');
-    console.log('⚠️  The 400 Bad Request from chain-proxy should be resolved.');
-    console.log('💡 Restart your development server to apply the changes.');
+    logger.info('\n🎉 Configuration fix successful!');
+    logger.info('🚀 Your app should now work without the duplicate parameter error.');
+    logger.info('⚠️  The 400 Bad Request from chain-proxy should be resolved.');
+    logger.info('💡 Restart your development server to apply the changes.');
   } else {
-    console.log('\n❌ RPC test failed. Check your API key configuration.');
+    logger.error('\n❌ RPC test failed. Check your API key configuration.');
   }
 }); 

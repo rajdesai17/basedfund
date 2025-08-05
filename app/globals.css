@@ -23,10 +23,63 @@ body {
   line-height: 1.5;
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Mobile-first responsive utilities */
+@media (max-width: 640px) {
+  .mobile-hidden {
+    display: none !important;
+  }
+  
+  .mobile-block {
+    display: block !important;
+  }
+  
+  .mobile-flex {
+    display: flex !important;
+  }
+  
+  .mobile-text-sm {
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+  }
+  
+  .mobile-text-xs {
+    font-size: 0.75rem !important;
+    line-height: 1rem !important;
+  }
+  
+  .mobile-p-2 {
+    padding: 0.5rem !important;
+  }
+  
+  .mobile-p-3 {
+    padding: 0.75rem !important;
+  }
+  
+  .mobile-p-4 {
+    padding: 1rem !important;
+  }
+  
+  .mobile-gap-2 {
+    gap: 0.5rem !important;
+  }
+  
+  .mobile-gap-3 {
+    gap: 0.75rem !important;
+  }
+}
+
+/* Touch-friendly improvements */
+.touch-manipulation {
+  touch-action: manipulation !important;
 }
 
 /* Ensure wallet components are visible */
@@ -54,6 +107,7 @@ body {
   padding-left: 0.75rem !important;
   padding-right: 0.75rem !important;
   cursor: pointer !important;
+  min-height: 44px !important; /* iOS touch target minimum */
 }
 
 .wallet-connect-button:hover {
@@ -61,17 +115,19 @@ body {
   color: #111827 !important;
 }
 
-/* Ensure all buttons are visible */
+/* Ensure all buttons are visible and touch-friendly */
 button {
   display: inline-block !important;
   cursor: pointer !important;
   font-family: inherit !important;
   font-size: inherit !important;
   line-height: inherit !important;
+  min-height: 44px !important; /* iOS touch target minimum */
+  touch-action: manipulation !important;
 }
 
 /* Force styling for form elements */
-input[type="number"], input[type="text"], select {
+input[type="number"], input[type="text"], select, textarea {
   display: block !important;
   width: 100% !important;
   background-color: #ffffff !important;
@@ -82,12 +138,24 @@ input[type="number"], input[type="text"], select {
   font-size: 0.875rem !important;
   line-height: 1.25rem !important;
   font-family: inherit !important;
+  min-height: 44px !important; /* iOS touch target minimum */
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
 }
 
-input[type="number"]:focus, input[type="text"]:focus, select:focus {
+input[type="number"]:focus, input[type="text"]:focus, select:focus, textarea:focus {
   outline: none !important;
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Mobile-specific input improvements */
+@media (max-width: 640px) {
+  input[type="number"], input[type="text"], select, textarea {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+    padding: 0.75rem !important;
+  }
 }
 
 /* Force button styling */
@@ -409,6 +477,24 @@ input[type="number"]:focus, input[type="text"]:focus, select:focus {
   margin-top: 0.25rem !important;
 }
 
+/* Responsive text utilities */
+@media (max-width: 640px) {
+  .text-base {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+  }
+  
+  .text-lg {
+    font-size: 1.125rem !important;
+    line-height: 1.75rem !important;
+  }
+  
+  .text-xl {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+  }
+}
+
 /* Custom animations */
 @keyframes fadeOut {
   0% { opacity: 1; }
@@ -417,4 +503,77 @@ input[type="number"]:focus, input[type="text"]:focus, select:focus {
 
 .animate-fade-out {
   animation: 1s fadeOut 3s ease-out forwards;
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  /* Improve touch targets */
+  button, input, select, textarea {
+    min-height: 44px !important;
+  }
+  
+  /* Better spacing for mobile */
+  .space-y-3 > * + * {
+    margin-top: 0.75rem !important;
+  }
+  
+  .space-y-4 > * + * {
+    margin-top: 1rem !important;
+  }
+  
+  /* Improve modal on mobile */
+  .modal-mobile {
+    margin: 0.5rem !important;
+    max-height: calc(100vh - 1rem) !important;
+  }
+  
+  /* Better card spacing on mobile */
+  .card-mobile {
+    margin-bottom: 0.75rem !important;
+    padding: 0.75rem !important;
+  }
+  
+  /* Improve form elements on mobile */
+  .form-mobile input,
+  .form-mobile textarea,
+  .form-mobile select {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+    padding: 0.75rem !important;
+  }
+}
+
+/* Prevent text selection on buttons */
+button {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Improve focus states for accessibility */
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+}
+
+/* Smooth scrolling for better mobile experience */
+html {
+  scroll-behavior: smooth !important;
+}
+
+/* Improve loading states */
+.loading-spinner {
+  animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
